@@ -8,14 +8,14 @@ import { useNovelGeneration } from './hooks/useNovelGeneration';
 const ToggleSwitch: React.FC<{ checked: boolean; onChange: (checked: boolean) => void; label: string }> = ({ checked, onChange, label }) => (
   <button
     onClick={() => onChange(!checked)}
-    className={`group flex items-center gap-3 focus:outline-none transition-all duration-300 ${checked ? 'text-white' : 'text-gray-500'}`}
+    className={`group flex items-center gap-3 focus:outline-none transition-all duration-300 ${checked ? 'text-white' : 'text-gray-400'}`}
     role="switch"
     aria-checked={checked}
   >
-    <div className={`w-10 h-6 rounded-full p-1 transition-colors duration-300 ease-in-out ${checked ? 'bg-primary' : 'bg-white/10'}`}>
+    <div className={`w-10 h-6 rounded-full p-1 transition-colors duration-300 ease-in-out border border-transparent ${checked ? 'bg-primary border-primary' : 'bg-white/10 group-hover:bg-white/20'}`}>
       <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ease-in-out ${checked ? 'translate-x-4' : 'translate-x-0'}`} />
     </div>
-    <span className="text-xs font-bold uppercase tracking-widest">{label}</span>
+    <span className={`text-xs font-bold uppercase tracking-widest transition-colors ${checked ? 'text-primary' : ''}`}>{label}</span>
   </button>
 );
 
@@ -29,15 +29,15 @@ const LengthSelector: React.FC<{ value: string; onChange: (val: string) => void 
   ];
 
   return (
-    <div className="grid grid-cols-4 gap-2 bg-white/5 p-1 rounded-lg">
+    <div className="grid grid-cols-4 gap-2 bg-black/40 p-1.5 rounded-xl border border-white/5">
       {options.map((opt) => (
         <button
           key={opt.value}
           onClick={() => onChange(opt.value)}
-          className={`py-1.5 px-2 rounded-md text-xs font-medium transition-all ${
+          className={`py-2 px-2 rounded-lg text-xs font-medium transition-all ${
             value === opt.value
-              ? 'bg-primary text-black shadow-lg'
-              : 'text-gray-400 hover:text-white hover:bg-white/5'
+              ? 'bg-primary text-black shadow-lg font-bold'
+              : 'text-gray-400 hover:text-white hover:bg-white/10'
           }`}
         >
           {opt.label}
@@ -46,6 +46,39 @@ const LengthSelector: React.FC<{ value: string; onChange: (val: string) => void 
     </div>
   );
 };
+
+// Reusable Input Field Component for consistency
+const SettingInput: React.FC<{ 
+  label: string; 
+  isActive: boolean; 
+  onToggle: (val: boolean) => void; 
+  value: string; 
+  onChange: (val: string) => void; 
+  placeholder: string;
+}> = ({ label, isActive, onToggle, value, onChange, placeholder }) => (
+  <div className={`p-4 rounded-xl border transition-all duration-300 ${isActive ? 'bg-white/5 border-primary/30' : 'bg-white/[0.02] border-white/5 hover:bg-white/5'}`}>
+    <div className="flex justify-between items-center h-8 mb-2">
+      <label className={`text-sm font-semibold transition-colors ${isActive ? 'text-white' : 'text-gray-400'}`}>{label}</label>
+      <ToggleSwitch checked={isActive} onChange={onToggle} label={isActive ? "입력" : "자동"} />
+    </div>
+    
+    <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isActive ? 'max-h-12 opacity-100' : 'max-h-0 opacity-0'}`}>
+       <input 
+         type="text" 
+         value={value} 
+         onChange={(e) => onChange(e.target.value)} 
+         placeholder={placeholder} 
+         className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all placeholder-gray-600" 
+       />
+    </div>
+    {!isActive && (
+       <div className="h-[42px] w-full flex items-center px-1 text-sm text-gray-600 italic select-none">
+         <span className="text-xs border border-white/5 bg-white/[0.02] px-2 py-1 rounded text-gray-500">AI 자동 결정</span>
+       </div>
+    )}
+  </div>
+);
+
 
 const App: React.FC = () => {
   const {
@@ -151,95 +184,93 @@ const App: React.FC = () => {
                         />
                       </div>
 
-                      <div className="h-px bg-white/5 w-full"></div>
+                      <div className="h-px bg-white/5 w-full my-6"></div>
 
-                      {/* Advanced Settings Toggle */}
+                      {/* Advanced Settings Toggle Button (Enhanced Visibility) */}
                       <button 
                         onClick={() => setShowAdvanced(!showAdvanced)}
-                        className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-gray-500 hover:text-white transition-colors"
+                        className={`w-full flex items-center justify-between p-4 rounded-xl transition-all duration-300 border ${showAdvanced ? 'bg-white/5 border-primary/30 text-primary shadow-[0_0_15px_rgba(251,191,36,0.1)]' : 'bg-transparent border-white/10 text-gray-400 hover:bg-white/5 hover:text-gray-200 hover:border-white/20'}`}
                       >
-                         <svg className={`w-4 h-4 transition-transform duration-300 ${showAdvanced ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                         </svg>
-                         세부 설정 (형식, 분량, 스타일 등)
+                         <span className="flex items-center gap-3 text-sm font-bold uppercase tracking-wider">
+                           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                           </svg>
+                           세부 설정 (형식, 분량, 스타일 등)
+                         </span>
+                         <div className={`p-1 rounded-full bg-white/5 transition-transform duration-300 ${showAdvanced ? 'rotate-180 bg-primary/20 text-primary' : ''}`}>
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                         </div>
                       </button>
 
-                      {/* Collapsible Advanced Settings */}
-                      <div className={`grid gap-6 overflow-hidden transition-all duration-500 ease-in-out ${showAdvanced ? 'max-h-[1000px] opacity-100 pt-2' : 'max-h-0 opacity-0'}`}>
+                      {/* Collapsible Advanced Settings (Enhanced Visibility) */}
+                      <div className={`overflow-hidden transition-all duration-500 ease-in-out ${showAdvanced ? 'max-h-[1400px] opacity-100' : 'max-h-0 opacity-0'}`}>
                           
-                          {/* Group 0: Format & Length */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                             {/* Format */}
-                             <div className="space-y-2">
-                                <div className="flex justify-between items-center h-8">
-                                  <label className="text-gray-300 text-sm font-semibold">글의 형식</label>
-                                  <ToggleSwitch checked={useCustomFormat} onChange={setUseCustomFormat} label={useCustomFormat ? "입력" : "자동"} />
-                                </div>
-                                {useCustomFormat ? (
-                                  <input type="text" value={format} onChange={(e) => setFormat(e.target.value)} placeholder="예: 소설, 수필" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all" />
-                                ) : <div className="h-[38px] w-full bg-white/5 border border-white/5 rounded-lg flex items-center px-3 text-sm text-gray-600 italic select-none">AI가 결정합니다</div>}
-                             </div>
+                          <div className="pt-4 pb-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                             
+                             {/* Group: Format & Length */}
+                             <SettingInput 
+                                label="글의 형식" 
+                                isActive={useCustomFormat} 
+                                onToggle={setUseCustomFormat} 
+                                value={format} 
+                                onChange={setFormat} 
+                                placeholder="예: 소설, 수필" 
+                             />
 
-                             {/* Length */}
-                             <div className="space-y-2">
-                                <div className="flex justify-between items-center h-8">
-                                  <label className="text-gray-300 text-sm font-semibold">글의 분량</label>
+                             <div className={`p-4 rounded-xl border transition-all duration-300 ${useCustomLength ? 'bg-white/5 border-primary/30' : 'bg-white/[0.02] border-white/5 hover:bg-white/5'}`}>
+                                <div className="flex justify-between items-center h-8 mb-2">
+                                  <label className={`text-sm font-semibold transition-colors ${useCustomLength ? 'text-white' : 'text-gray-400'}`}>글의 분량</label>
                                   <ToggleSwitch checked={useCustomLength} onChange={setUseCustomLength} label={useCustomLength ? "선택" : "자동"} />
                                 </div>
-                                {useCustomLength ? (
-                                  <LengthSelector value={length} onChange={setLength} />
-                                ) : <div className="h-[38px] w-full bg-white/5 border border-white/5 rounded-lg flex items-center px-3 text-sm text-gray-600 italic select-none">AI가 결정합니다</div>}
-                             </div>
-                          </div>
-
-                          {/* Group 1: Style & Tone */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                             {/* Author Style */}
-                             <div className="space-y-2">
-                                <div className="flex justify-between items-center h-8">
-                                  <label className="text-gray-300 text-sm font-semibold">작가 스타일</label>
-                                  <ToggleSwitch checked={useCustomAuthor} onChange={setUseCustomAuthor} label={useCustomAuthor ? "입력" : "자동"} />
+                                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${useCustomLength ? 'max-h-12 opacity-100' : 'max-h-0 opacity-0'}`}>
+                                    <LengthSelector value={length} onChange={setLength} />
                                 </div>
-                                {useCustomAuthor ? (
-                                  <input type="text" value={authorStyle} onChange={(e) => setAuthorStyle(e.target.value)} placeholder="예: 헤밍웨이" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all" />
-                                ) : <div className="h-[38px] w-full bg-white/5 border border-white/5 rounded-lg flex items-center px-3 text-sm text-gray-600 italic select-none">AI가 결정합니다</div>}
+                                {!useCustomLength && (
+                                   <div className="h-[42px] w-full flex items-center px-1 text-sm text-gray-600 italic select-none">
+                                     <span className="text-xs border border-white/5 bg-white/[0.02] px-2 py-1 rounded text-gray-500">AI 자동 결정</span>
+                                   </div>
+                                )}
                              </div>
 
-                             {/* Genre */}
-                             <div className="space-y-2">
-                                <div className="flex justify-between items-center h-8">
-                                  <label className="text-gray-300 text-sm font-semibold">장르</label>
-                                  <ToggleSwitch checked={useCustomGenre} onChange={setUseCustomGenre} label={useCustomGenre ? "입력" : "자동"} />
-                                </div>
-                                {useCustomGenre ? (
-                                  <input type="text" value={genre} onChange={(e) => setGenre(e.target.value)} placeholder="예: 로맨스" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all" />
-                                ) : <div className="h-[38px] w-full bg-white/5 border border-white/5 rounded-lg flex items-center px-3 text-sm text-gray-600 italic select-none">AI가 결정합니다</div>}
-                             </div>
-                          </div>
+                             {/* Group: Style & Tone */}
+                             <SettingInput 
+                                label="작가 스타일" 
+                                isActive={useCustomAuthor} 
+                                onToggle={setUseCustomAuthor} 
+                                value={authorStyle} 
+                                onChange={setAuthorStyle} 
+                                placeholder="예: 헤밍웨이" 
+                             />
+                             
+                             <SettingInput 
+                                label="장르" 
+                                isActive={useCustomGenre} 
+                                onToggle={setUseCustomGenre} 
+                                value={genre} 
+                                onChange={setGenre} 
+                                placeholder="예: 로맨스, 판타지" 
+                             />
 
-                          {/* Group 2: Narrative Structure */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                             {/* POV */}
-                             <div className="space-y-2">
-                                <div className="flex justify-between items-center h-8">
-                                  <label className="text-gray-300 text-sm font-semibold">시점 (POV)</label>
-                                  <ToggleSwitch checked={useCustomPOV} onChange={setUseCustomPOV} label={useCustomPOV ? "입력" : "자동"} />
-                                </div>
-                                {useCustomPOV ? (
-                                  <input type="text" value={pointOfView} onChange={(e) => setPointOfView(e.target.value)} placeholder="예: 1인칭" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all" />
-                                ) : <div className="h-[38px] w-full bg-white/5 border border-white/5 rounded-lg flex items-center px-3 text-sm text-gray-600 italic select-none">AI가 결정합니다</div>}
-                             </div>
-
-                             {/* Ending Style */}
-                             <div className="space-y-2">
-                                <div className="flex justify-between items-center h-8">
-                                  <label className="text-gray-300 text-sm font-semibold">결말 스타일</label>
-                                  <ToggleSwitch checked={useCustomEnding} onChange={setUseCustomEnding} label={useCustomEnding ? "입력" : "자동"} />
-                                </div>
-                                {useCustomEnding ? (
-                                  <input type="text" value={endingStyle} onChange={(e) => setEndingStyle(e.target.value)} placeholder="예: 열린 결말" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all" />
-                                ) : <div className="h-[38px] w-full bg-white/5 border border-white/5 rounded-lg flex items-center px-3 text-sm text-gray-600 italic select-none">AI가 결정합니다</div>}
-                             </div>
+                             {/* Group: Narrative */}
+                             <SettingInput 
+                                label="시점 (POV)" 
+                                isActive={useCustomPOV} 
+                                onToggle={setUseCustomPOV} 
+                                value={pointOfView} 
+                                onChange={setPointOfView} 
+                                placeholder="예: 1인칭, 3인칭 전지적" 
+                             />
+                             
+                             <SettingInput 
+                                label="결말 스타일" 
+                                isActive={useCustomEnding} 
+                                onToggle={setUseCustomEnding} 
+                                value={endingStyle} 
+                                onChange={setEndingStyle} 
+                                placeholder="예: 열린 결말, 해피엔딩" 
+                             />
                           </div>
                       </div>
                     </div>
