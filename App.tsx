@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import LoadingIndicator from './components/LoadingIndicator';
 import NovelRenderer from './components/NovelRenderer';
+import TemplateSelector from './components/TemplateSelector';
 import { LoadingState } from './types';
 import { useNovelGeneration } from './hooks/useNovelGeneration';
 
@@ -94,7 +95,8 @@ const App: React.FC = () => {
     loadingState,
     errorMessage,
     generate,
-    reset
+    reset,
+    applyTemplate
   } = useNovelGeneration();
 
   // UI State
@@ -168,6 +170,12 @@ const App: React.FC = () => {
                     {/* Form Grid */}
                     <div className="space-y-6 relative z-10">
                       
+                      {/* Template Selector */}
+                      <TemplateSelector onSelect={(template) => {
+                          applyTemplate(template);
+                          setShowAdvanced(true); // Auto-open advanced settings to show changes
+                      }} />
+
                       {/* Main Content Input */}
                       <div className="space-y-3">
                         <label className="block text-primary text-xs font-bold tracking-widest uppercase ml-1">
@@ -180,7 +188,6 @@ const App: React.FC = () => {
                           placeholder="어떤 이야기를 만들고 싶으신가요? 키워드, 줄거리, 혹은 막연한 느낌을 적어주세요."
                           className="w-full bg-transparent text-lg text-white placeholder-gray-600 border-none focus:ring-0 resize-none outline-none leading-relaxed min-h-[120px]"
                           rows={3}
-                          autoFocus
                         />
                       </div>
 

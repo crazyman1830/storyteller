@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { generateNovelStream } from '../services/geminiService';
-import { NovelConfiguration, LoadingState, NovelTemplate } from '../types';
+import { NovelConfiguration, LoadingState } from '../types';
 
 export const useNovelGeneration = () => {
   // Configuration State
@@ -31,47 +31,6 @@ export const useNovelGeneration = () => {
   const [novelMarkdown, setNovelMarkdown] = useState<string>('');
   const [loadingState, setLoadingState] = useState<LoadingState>(LoadingState.IDLE);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  // Template Logic
-  const applyTemplate = useCallback((template: NovelTemplate) => {
-    const { config } = template;
-
-    setContent(config.content || '');
-
-    // Helper to toggle custom flags based on value presence
-    const applyField = (
-      val: string | null | undefined, 
-      setVal: (v: string) => void, 
-      setToggle: (v: boolean) => void
-    ) => {
-      if (val) {
-        setVal(val);
-        setToggle(true);
-      } else {
-        setVal('');
-        setToggle(false);
-      }
-    };
-
-    applyField(config.format, setFormat, setUseCustomFormat);
-    applyField(config.genre, setGenre, setUseCustomGenre);
-    applyField(config.theme, setTheme, setUseCustomTheme);
-    applyField(config.authorStyle, setAuthorStyle, setUseCustomAuthor);
-    applyField(config.endingStyle, setEndingStyle, setUseCustomEnding);
-    applyField(config.pointOfView, setPointOfView, setUseCustomPOV);
-
-    if (config.length) {
-      setLength(config.length);
-      setUseCustomLength(true);
-    } else {
-      setLength('Medium');
-      setUseCustomLength(false);
-    }
-    
-    // Reset generation state
-    setNovelMarkdown('');
-    setLoadingState(LoadingState.IDLE);
-  }, []);
 
   const generate = useCallback(async () => {
     setLoadingState(LoadingState.GENERATING);
@@ -133,7 +92,6 @@ export const useNovelGeneration = () => {
     
     // Actions
     generate,
-    reset,
-    applyTemplate
+    reset
   };
 };

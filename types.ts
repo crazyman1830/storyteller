@@ -25,6 +25,14 @@ export interface NovelConfiguration {
   content: string; // The core idea
 }
 
+export interface NovelTemplate {
+  id: string;
+  label: string;
+  description: string;
+  icon: string;
+  config: Partial<NovelConfiguration>;
+}
+
 export interface GenerationError {
   message: string;
 }

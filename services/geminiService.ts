@@ -2,42 +2,71 @@ import { GoogleGenAI } from "@google/genai";
 import { ALCHEMIST_SYSTEM_PROMPT } from "../constants";
 import { NovelConfiguration } from "../types";
 
-// Helper to build the prompt string
+/**
+ * Helper to create a standardized instruction line.
+ * e.g., "- **Genre:** Fantasy" or "- **Genre:** Auto-detect / Best fit"
+ */
+const createInstruction = (label: string, value: string | null, defaultText: string = "Auto-detect / Best fit") => {
+  return `- **${label}:** ${value ? value : defaultText}`;
+};
+
+/**
+ * Generates the specific instruction for story length based on the selected option.
+ */
+const getLengthInstruction = (length: string | null): string => {
+  if (!length) {
+    return `- **Target Length:** Auto (Writer's discretion, usually 2,000+ characters)`;
+  }
+
+  switch (length) {
+    case "Short":
+      return `- **Target Length:** Short length (approx. 1,000 ~ 1,500 characters). Concise but impactful.`;
+    case "Medium":
+      return `- **Target Length:** Standard length (approx. 2,000 ~ 3,000 characters). Well-paced.`;
+    case "Long":
+      return `- **Target Length:** Long length (approx. 4,000+ characters). Richly detailed.`;
+    case "Max":
+      return `- **Target Length:** Maximum possible length (try to reach 8,000+ characters if possible within limits). Epic and sprawling.`;
+    default:
+      return `- **Target Length:** Standard length.`;
+  }
+};
+
+/**
+ * Generates the content instruction, handling empty input cases.
+ */
+const getContentInstruction = (content: string): string => {
+  if (content.trim()) {
+    return `- **Story Idea / Content:** ${content}`;
+  }
+  return `- **Story Idea / Content:** Creative Freedom (Invent a compelling story)`;
+};
+
+/**
+ * Assembles the final user prompt from the configuration.
+ */
 const buildPrompt = (config: NovelConfiguration): string => {
-  const promptParts = [];
-  promptParts.push("Please write a literary piece based on the following configuration:\n");
+  const instructions = [
+    "Please write a literary piece based on the following configuration:\n",
+    
+    // 1. Structure & Format
+    createInstruction("Format", config.format, "Default (Short Novel / Story)"),
+    getLengthInstruction(config.length),
+
+    // 2. Style & Tone
+    createInstruction("Target Author Style", config.authorStyle, "Alchemist's Default (Sentimental & Verbose)"),
+    createInstruction("Genre", config.genre),
+    createInstruction("Theme", config.theme),
+    
+    // 3. Narrative Elements
+    createInstruction("Ending Style", config.endingStyle),
+    createInstruction("Point of View", config.pointOfView),
+
+    // 4. Core Content
+    getContentInstruction(config.content)
+  ];
   
-  // 1. Format
-  promptParts.push(config.format ? `- **Format:** ${config.format}` : `- **Format:** Default (Short Novel / Story)`);
-
-  // 2. Length
-  if (config.length) {
-    let lengthInstruction = "";
-    switch (config.length) {
-      case "Short": lengthInstruction = "Short length (approx. 1,000 ~ 1,500 characters). Concise but impactful."; break;
-      case "Medium": lengthInstruction = "Standard length (approx. 2,000 ~ 3,000 characters). Well-paced."; break;
-      case "Long": lengthInstruction = "Long length (approx. 4,000+ characters). Richly detailed."; break;
-      case "Max": lengthInstruction = "Maximum possible length (try to reach 8,000+ characters if possible within limits). Epic and sprawling."; break;
-      default: lengthInstruction = "Standard length.";
-    }
-    promptParts.push(`- **Target Length:** ${lengthInstruction}`);
-  } else {
-    promptParts.push(`- **Target Length:** Auto (Writer's discretion, usually 2,000+ characters)`);
-  }
-
-  promptParts.push(config.authorStyle ? `- **Target Author Style:** ${config.authorStyle}` : `- **Target Author Style:** Alchemist's Default (Sentimental & Verbose)`);
-  promptParts.push(config.genre ? `- **Genre:** ${config.genre}` : `- **Genre:** Auto-detect / Best fit`);
-  promptParts.push(config.theme ? `- **Theme:** ${config.theme}` : `- **Theme:** Auto-detect / Best fit`);
-  promptParts.push(config.endingStyle ? `- **Ending Style:** ${config.endingStyle}` : `- **Ending Style:** Auto-detect / Best fit`);
-  promptParts.push(config.pointOfView ? `- **Point of View:** ${config.pointOfView}` : `- **Point of View:** Auto-detect / Best fit`);
-
-  if (config.content.trim()) {
-    promptParts.push(`- **Story Idea / Content:** ${config.content}`);
-  } else {
-    promptParts.push(`- **Story Idea / Content:** Creative Freedom (Invent a compelling story)`);
-  }
-  
-  return promptParts.join("\n");
+  return instructions.join("\n");
 };
 
 export const generateNovelStream = async function* (config: NovelConfiguration) {

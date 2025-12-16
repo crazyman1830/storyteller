@@ -1,5 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { NovelContent } from '../types';
+import { generateExportHTML } from '../services/htmlGenerator';
 
 interface NovelRendererProps {
   rawMarkdown: string;
@@ -7,6 +8,8 @@ interface NovelRendererProps {
 }
 
 const NovelRenderer: React.FC<NovelRendererProps> = ({ rawMarkdown, isStreaming = false }) => {
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
+
   const content: NovelContent | null = useMemo(() => {
     if (!rawMarkdown) return null;
 
@@ -50,6 +53,32 @@ const NovelRenderer: React.FC<NovelRendererProps> = ({ rawMarkdown, isStreaming 
       }
     };
   }, [rawMarkdown, isStreaming]);
+
+  const handleCopyHtml = async () => {
+    if (!content) return;
+    const html = generateExportHTML(content);
+    try {
+      await navigator.clipboard.writeText(html);
+      setCopyStatus('copied');
+      setTimeout(() => setCopyStatus('idle'), 2000);
+    } catch (err) {
+      console.error('Failed to copy HTML', err);
+    }
+  };
+
+  const handleDownloadHtml = () => {
+    if (!content) return;
+    const html = generateExportHTML(content);
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${content.title.replace(/[^a-z0-9가-힣\s]/gi, '_')}.html`; // Safe filename
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   if (!content && !rawMarkdown) return null;
 
@@ -106,6 +135,7 @@ const NovelRenderer: React.FC<NovelRendererProps> = ({ rawMarkdown, isStreaming 
 
         {/* Footer / Author's Note */}
         {(content?.meta.intent !== '...' || !isStreaming) && (
+          <>
              <footer className="mt-20 pt-10 border-t border-white/5 animate-fade-in">
                 <div className="glass-panel rounded-2xl p-8">
                     <h3 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-4 font-sans">작가의 의도</h3>
@@ -114,6 +144,41 @@ const NovelRenderer: React.FC<NovelRendererProps> = ({ rawMarkdown, isStreaming 
                     </p>
                 </div>
             </footer>
+
+            {/* Export Actions */}
+            <div className="mt-8 flex flex-col md:flex-row items-center justify-center gap-4 animate-fade-in">
+              <button 
+                onClick={handleCopyHtml}
+                disabled={isStreaming}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white transition-all text-sm font-medium group disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                 {copyStatus === 'copied' ? (
+                   <>
+                     <svg className="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                     <span className="text-green-400">복사 완료!</span>
+                   </>
+                 ) : (
+                   <>
+                     <svg className="w-4 h-4 text-gray-400 group-hover:text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                     <span>HTML 코드 복사</span>
+                   </>
+                 )}
+              </button>
+
+              <button 
+                onClick={handleDownloadHtml}
+                disabled={isStreaming}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white transition-all text-sm font-medium group disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <svg className="w-4 h-4 text-gray-400 group-hover:text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                <span>파일 저장 (.html)</span>
+              </button>
+            </div>
+            
+            <p className="text-center text-xs text-gray-600 mt-4">
+               * 블로그나 게시판의 HTML 편집기 모드에 붙여넣기 하세요.
+            </p>
+          </>
         )}
     </div>
   );
