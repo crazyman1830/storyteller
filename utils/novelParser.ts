@@ -31,8 +31,8 @@ export const parseNovelMarkdown = (rawMarkdown: string, isStreaming: boolean): N
   if (metaRaw) {
     // Regex to find "Genre:" or "장르:" followed by content
     const genreExtractor = metaRaw.match(/(?:-|\*)\s*\*\*(?:Genre|장르):\*\*\s*(.*)/i);
-    // Regex to find "Intent:" or "의도:" followed by content
-    const intentExtractor = metaRaw.match(/(?:-|\*)\s*\*\*(?:Intent|의도):\*\*\s*(.*)/i);
+    // Regex to find "Intent:" or "의도:" or "Concept:" followed by content
+    const intentExtractor = metaRaw.match(/(?:-|\*)\s*\*\*(?:Intent|Concept|의도|기획\s*의도):\*\*\s*(.*)/i);
 
     if (genreExtractor) genre = genreExtractor[1].trim();
     if (intentExtractor) intent = intentExtractor[1].trim();

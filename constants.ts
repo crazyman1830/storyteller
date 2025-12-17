@@ -54,7 +54,7 @@ Strictly follow this Markdown structure. Do not change the headers.
 
 ## Author's Note
 - **Genre:** (The selected genre/format in Korean)
-- **Concept:** (A brief, professional summary of the story's core concept in Korean)
+- **Intent:** (A brief, professional summary of the story's creative intent and core message in Korean)
 </output_format>
 `;
 
