@@ -70,3 +70,8 @@ export interface AuthorTemplate extends BaseTemplate {
 export interface GenerationError {
   message: string;
 }
+
+export interface ChatMessage {
+  role: 'user' | 'model';
+  text: string;
+}

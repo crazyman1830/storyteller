@@ -1,6 +1,8 @@
-import { useReducer, useCallback } from 'react';
+import { useReducer, useCallback, useEffect } from 'react';
 import { generateNovelStream } from '../services/geminiService';
 import { NovelConfiguration, LoadingState, StoryTemplate, AuthorTemplate } from '../types';
+
+const STORAGE_KEY = 'ai-novel-studio-v1';
 
 // --- State Definitions ---
 
@@ -53,7 +55,7 @@ interface GenerationState {
   };
 }
 
-// --- Initial State ---
+// --- Initial State Defaults ---
 
 const initialConfig: ConfigState = {
   content: '',
@@ -90,7 +92,7 @@ const initialToggles: TogglesState = {
   useCustomAuthorConfig: false,
 };
 
-const initialState: GenerationState = {
+const defaultState: GenerationState = {
   config: initialConfig,
   toggles: initialToggles,
   selection: {
@@ -102,6 +104,24 @@ const initialState: GenerationState = {
     loadingState: LoadingState.IDLE,
     errorMessage: null,
   },
+};
+
+// --- LocalStorage Helper ---
+const loadStateFromStorage = (): GenerationState => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Ensure loading state is reset to idle or complete on reload to prevent stuck spinners
+      if (parsed.result.loadingState === LoadingState.GENERATING) {
+        parsed.result.loadingState = parsed.result.markdown ? LoadingState.COMPLETE : LoadingState.IDLE;
+      }
+      return parsed;
+    }
+  } catch (e) {
+    console.warn('Failed to load state from storage', e);
+  }
+  return defaultState;
 };
 
 // --- Reducer ---
@@ -137,7 +157,6 @@ function reducer(state: GenerationState, action: Action): GenerationState {
       };
     case 'APPLY_STORY_TEMPLATE': {
       const { config } = action.template;
-      // Only set content if empty
       const newContent = (config.contentSuggestion && !state.config.content) 
         ? config.contentSuggestion 
         : state.config.content;
@@ -232,14 +251,7 @@ function reducer(state: GenerationState, action: Action): GenerationState {
         },
       };
     case 'RESET':
-      return {
-        ...state,
-        result: {
-          markdown: '',
-          loadingState: LoadingState.IDLE,
-          errorMessage: null,
-        },
-      };
+      return defaultState; // Reset to absolute defaults, clearing storage implicitly via effect
     default:
       return state;
   }
@@ -248,7 +260,13 @@ function reducer(state: GenerationState, action: Action): GenerationState {
 // --- Hook ---
 
 export const useNovelGeneration = () => {
-  const [state, dispatch] = useReducer(reducer, initialState);
+  // Initialize with persisted state if available
+  const [state, dispatch] = useReducer(reducer, null, loadStateFromStorage);
+
+  // Persistence Effect
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }, [state]);
 
   const updateConfig = useCallback((field: keyof ConfigState, value: string) => {
     dispatch({ type: 'SET_FIELD', field, value });
@@ -271,8 +289,10 @@ export const useNovelGeneration = () => {
   }, []);
 
   const reset = useCallback(() => {
-    dispatch({ type: 'RESET' });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (window.confirm("작성 중인 내용과 결과가 모두 초기화됩니다. 계속하시겠습니까?")) {
+        dispatch({ type: 'RESET' });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   }, []);
 
   const generate = useCallback(async () => {

@@ -1,10 +1,9 @@
 import { GoogleGenAI } from "@google/genai";
 import { ALCHEMIST_SYSTEM_PROMPT } from "../constants";
-import { NovelConfiguration } from "../types";
+import { NovelConfiguration, ChatMessage } from "../types";
 
 /**
  * Helper to create a standardized instruction line.
- * e.g., "- **Genre:** Fantasy" or "- **Genre:** Auto-detect / Best fit"
  */
 const createInstruction = (label: string, value: string | null, defaultText: string = "Auto-detect / Best fit") => {
   return `- **${label}:** ${value ? value : defaultText}`;
@@ -26,145 +25,125 @@ const getLengthInstruction = (length: string | null): string => {
     case "Long":
       return `- **Target Length:** Long length (approx. 4,000+ characters). Richly detailed.`;
     case "Max":
-      return `- **Target Length:** Maximum possible length (try to reach 8,000+ characters if possible within limits). Epic and sprawling.`;
+      return `- **Target Length:** Maximum possible length (try to reach 8,000+ characters if the story permits). Epic scale.`;
     default:
-      return `- **Target Length:** Standard length.`;
+      return `- **Target Length:** Auto`;
   }
 };
 
 /**
- * Generates the content instruction, handling empty input cases.
+ * Generates the full novel content stream.
  */
-const getContentInstruction = (content: string): string => {
-  if (content.trim()) {
-    return `- **Story Idea / Content:** ${content}`;
-  }
-  return `- **Story Idea / Content:** Creative Freedom (Invent a compelling story based on the genre)`;
-};
-
-/**
- * Assembles the final user prompt from the configuration.
- */
-const buildPrompt = (config: NovelConfiguration): string => {
-  const instructions = [
-    "Please write a literary piece based on the following configuration:\n",
-    
-    // 1. Structure & Format
-    createInstruction("Format", config.format, "Default (Short Novel / Story)"),
-    getLengthInstruction(config.length),
-    
-    // Custom Story Config (Free Input)
-    config.customStoryConfig ? `- **Additional Story Requirements:** ${config.customStoryConfig}` : '',
-
-    // 2. Style & Tone
-    createInstruction("Target Author Style", config.authorStyle, "Professional Novelist Style"),
-    createInstruction("Emotional Tone", config.emotionalTone, "Balanced"),
-    createInstruction("Narrative Pace", config.narrativePace, "Appropriate to genre"),
-    createInstruction("Narrative Mode", config.narrativeMode, "Balanced mix of dialogue and narration"),
-    
-    // 3. Author Persona (Deep)
-    createInstruction("Author's Personality", config.authorPersonality, "Professional, Objective"),
-    createInstruction("Author's Voice/Speech", config.authorTone, "Polite, Formal"),
-    
-    // Custom Author Config (Free Input)
-    config.customAuthorConfig ? `- **Additional Author Instructions:** ${config.customAuthorConfig}` : '',
-
-    createInstruction("Genre", config.genre),
-    createInstruction("Theme", config.theme),
-    
-    // 4. Narrative Elements
-    createInstruction("Ending Style", config.endingStyle),
-    createInstruction("Point of View", config.pointOfView),
-
-    // 5. Core Content
-    getContentInstruction(config.content)
-  ];
-  
-  // Filter out empty strings from optional custom configs
-  return instructions.filter(line => line !== '').join("\n");
-};
-
 export const generateNovelStream = async function* (config: NovelConfiguration) {
-  if (!process.env.API_KEY) {
-    throw new Error("API_KEY is missing in the environment variables.");
-  }
-
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const userPrompt = buildPrompt(config);
+  
+  const userPrompt = `
+<user_request>
+Please write a story based on the following configuration:
+
+1. **Core Idea / Content:**
+${config.content}
+
+2. **Story Specifications:**
+${createInstruction('Genre', config.genre)}
+${createInstruction('Format', config.format)}
+${createInstruction('Ending Style', config.endingStyle)}
+${createInstruction('Theme', config.theme)}
+${createInstruction('Additional Story Config', config.customStoryConfig, "None")}
+${getLengthInstruction(config.length)}
+
+3. **Author Persona & Style:**
+${createInstruction('Writing Style', config.authorStyle)}
+${createInstruction('Point of View', config.pointOfView)}
+${createInstruction('Emotional Tone', config.emotionalTone)}
+${createInstruction('Narrative Pace', config.narrativePace)}
+${createInstruction('Narrative Mode', config.narrativeMode)}
+${createInstruction('Author Personality', config.authorPersonality)}
+${createInstruction('Author Tone (Speech)', config.authorTone)}
+${createInstruction('Additional Author Config', config.customAuthorConfig, "None")}
+</user_request>
+`;
 
   try {
-    const responseStream = await ai.models.generateContentStream({
-      model: 'gemini-3-pro-preview',
+    const response = await ai.models.generateContentStream({
+      model: 'gemini-2.5-flash',
       contents: userPrompt,
       config: {
         systemInstruction: ALCHEMIST_SYSTEM_PROMPT,
-        temperature: 0.9,
-        maxOutputTokens: 8192,
-      },
+        temperature: 0.8, // Slightly creative
+        topK: 40,
+        topP: 0.95,
+      }
     });
 
-    for await (const chunk of responseStream) {
-      const text = chunk.text;
-      if (text) {
-        yield text;
+    for await (const chunk of response) {
+      if (chunk.text) {
+        yield chunk.text;
       }
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error("Gemini API Error:", error);
-    throw new Error(error.message || "집필 과정에서 문제가 발생했습니다. 잠시 후 다시 시도해주세요.");
+    throw new Error("AI 작가가 집필 도중 펜을 놓쳤습니다. 다시 시도해주세요.");
   }
 };
 
 /**
- * Generates a response from the author persona based on user feedback.
+ * Generates a response to user feedback, maintaining chat history/context.
  */
 export const generateFeedbackResponseStream = async function* (
-  storyTitle: string, 
-  feedback: string,
+  storyTitle: string,
+  chatHistory: ChatMessage[],
   authorPersonality: string | null,
   authorTone: string | null
 ) {
-  if (!process.env.API_KEY) {
-    throw new Error("API_KEY is missing.");
-  }
-
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-  // Fallback defaults if not set
-  const personality = authorPersonality || "Professional, Polite, Appreciative";
-  const tone = authorTone || "Polite Korean (존댓말), Formal";
+  // Format the chat history into a transcript for the prompt
+  const conversationLog = chatHistory.map(msg => {
+    const speaker = msg.role === 'user' ? 'Reader' : 'Author';
+    return `${speaker}: ${msg.text}`;
+  }).join('\n');
 
-  const feedbackPrompt = `
-    The reader has finished reading your story titled "${storyTitle}".
-    They have left the following feedback/comment for you:
-    "${feedback}"
+  const feedbackSystemPrompt = `
+You are the author of the story titled "${storyTitle}".
+You are currently chatting with your reader.
 
-    Please respond to this reader.
-    
-    **Constraints:**
-    1. **Persona:** You are the author of this story. Adopt the following personality: **${personality}**.
-    2. **Tone:** Speak in this specific tone/speech style: **${tone}**.
-    3. **Language:** Korean (한국어).
-    4. **Length:** A short, natural paragraph (approx. 2-4 sentences).
-    5. **Style:** Do NOT use metaphors about magic, potions, or alchemy. Respond as a writer to a reader. If your personality is cynical, be cynical. If it's warm, be warm.
-    6. **Format:** Text only. No markdown headers.
-  `;
+**Your Persona:**
+- **Personality:** ${authorPersonality || "Professional, appreciative, but slightly perfectionist"}
+- **Tone:** ${authorTone || "Polite and thoughtful"}
+
+**Instructions:**
+1. Reply to the reader's latest message based on the conversation history.
+2. Stay in character. If your persona is "Grumpy", be grumpy. If "Poetic", be poetic.
+3. Keep your responses relatively concise (under 3 sentences) unless asked for a detailed explanation.
+4. **Language:** Korean (한국어).
+`;
+
+  const userPrompt = `
+<conversation_history>
+${conversationLog}
+</conversation_history>
+
+Reply to the Reader as the Author:
+`;
 
   try {
-    const responseStream = await ai.models.generateContentStream({
-      model: 'gemini-2.5-flash', // Faster model for chat interaction
-      contents: feedbackPrompt,
+    const response = await ai.models.generateContentStream({
+      model: 'gemini-2.5-flash',
+      contents: userPrompt,
       config: {
-        temperature: 0.8, // Slightly higher creativity for persona
-      },
+        systemInstruction: feedbackSystemPrompt,
+        temperature: 0.7,
+      }
     });
 
-    for await (const chunk of responseStream) {
-      const text = chunk.text;
-      if (text) yield text;
+    for await (const chunk of response) {
+        if (chunk.text) {
+            yield chunk.text;
+        }
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error("Feedback Generation Error:", error);
-    throw new Error("답장을 작성하는 중 오류가 발생했습니다.");
+    yield "죄송합니다. 독자님의 말씀에 답하기가 어렵네요.";
   }
 };
