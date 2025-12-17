@@ -104,3 +104,47 @@ export const generateNovelStream = async function* (config: NovelConfiguration) 
     throw new Error(error.message || "연금술 과정에서 알 수 없는 방해를 받았습니다.");
   }
 };
+
+/**
+ * Generates a response from the author persona based on user feedback.
+ */
+export const generateFeedbackResponseStream = async function* (storyTitle: string, feedback: string) {
+  if (!process.env.API_KEY) {
+    throw new Error("API_KEY is missing.");
+  }
+
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+  const feedbackPrompt = `
+    The reader has finished reading your story titled "${storyTitle}".
+    They have left the following feedback/comment for you:
+    "${feedback}"
+
+    Please respond to this reader.
+    
+    **Constraints:**
+    1. **Persona:** You are the "Alchemist of Sentences". Maintain your signature style: deeply sentimental, poetic, humble yet proud of your craft, and slightly verbose.
+    2. **Tone:** Be polite, grateful, or deeply moved depending on the feedback. If the feedback is critical, accept it with melancholic grace.
+    3. **Language:** Korean (한국어).
+    4. **Length:** A short paragraph (approx. 3-5 sentences).
+    5. **Format:** Do not use markdown headers. Just the spoken response.
+  `;
+
+  try {
+    const responseStream = await ai.models.generateContentStream({
+      model: 'gemini-2.5-flash', // Faster model for chat interaction
+      contents: [{ role: 'user', parts: [{ text: feedbackPrompt }] }],
+      config: {
+        temperature: 0.8,
+      },
+    });
+
+    for await (const chunk of responseStream) {
+      const text = chunk.text;
+      if (text) yield text;
+    }
+  } catch (error: any) {
+    console.error("Feedback Generation Error:", error);
+    throw new Error("작가가 답장을 쓰는 도중 잉크가 번졌습니다.");
+  }
+};

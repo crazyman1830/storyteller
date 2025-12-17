@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { NovelContent } from '../types';
 import { generateExportHTML } from '../services/htmlGenerator';
+import { generateFeedbackResponseStream } from '../services/geminiService';
 
 interface NovelRendererProps {
   rawMarkdown: string;
@@ -9,6 +10,13 @@ interface NovelRendererProps {
 
 const NovelRenderer: React.FC<NovelRendererProps> = ({ rawMarkdown, isStreaming = false }) => {
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
+  
+  // Feedback State
+  const [feedbackInput, setFeedbackInput] = useState('');
+  const [isSendingFeedback, setIsSendingFeedback] = useState(false);
+  const [authorResponse, setAuthorResponse] = useState('');
+  const [showFeedbackForm, setShowFeedbackForm] = useState(false);
+  const responseRef = useRef<HTMLDivElement>(null);
 
   const content: NovelContent | null = useMemo(() => {
     if (!rawMarkdown) return null;
@@ -79,6 +87,32 @@ const NovelRenderer: React.FC<NovelRendererProps> = ({ rawMarkdown, isStreaming 
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
+
+  const handleSendFeedback = async () => {
+    if (!feedbackInput.trim() || !content) return;
+    
+    setIsSendingFeedback(true);
+    setAuthorResponse('');
+    
+    try {
+      const stream = generateFeedbackResponseStream(content.title, feedbackInput);
+      for await (const chunk of stream) {
+        setAuthorResponse(prev => prev + chunk);
+      }
+    } catch (err) {
+      setAuthorResponse("감사의 인사를 전하려 했으나, 마음이 닿지 않았나 봅니다.");
+    } finally {
+      setIsSendingFeedback(false);
+      setFeedbackInput(''); // Clear input after sending
+    }
+  };
+  
+  // Scroll to response when it starts coming in
+  useEffect(() => {
+    if (authorResponse && responseRef.current) {
+        responseRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [isSendingFeedback]);
 
   if (!content && !rawMarkdown) return null;
 
@@ -175,9 +209,86 @@ const NovelRenderer: React.FC<NovelRendererProps> = ({ rawMarkdown, isStreaming 
               </button>
             </div>
             
-            <p className="text-center text-xs text-gray-600 mt-4">
+            <p className="text-center text-xs text-gray-600 mt-4 mb-16">
                * 블로그나 게시판의 HTML 편집기 모드에 붙여넣기 하세요.
             </p>
+
+            {/* Author Feedback Section */}
+            <div className="mt-12 pt-10 border-t border-white/5 animate-fade-in">
+              {!showFeedbackForm && !authorResponse ? (
+                <button
+                  onClick={() => setShowFeedbackForm(true)}
+                  className="w-full py-4 border border-dashed border-white/20 rounded-xl text-gray-500 hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-all text-sm font-medium flex items-center justify-center gap-2 group"
+                >
+                  <svg className="w-5 h-5 group-hover:animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+                  작가에게 감상평 남기기
+                </button>
+              ) : (
+                <div className="animate-slide-up">
+                  {/* Response Display */}
+                  {authorResponse ? (
+                    <div ref={responseRef} className="glass-panel rounded-2xl p-6 md:p-8 bg-primary/5 border-primary/20 relative">
+                        <div className="absolute -top-3 left-6 bg-surface px-2 text-primary text-xs font-bold uppercase tracking-widest border border-primary/20 rounded-full">
+                           작가의 답장
+                        </div>
+                        <div className="flex gap-4">
+                           <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-xl">
+                              ✒️
+                           </div>
+                           <div className="flex-grow">
+                             <p className="text-gray-200 font-serif italic leading-relaxed text-lg">
+                                "{authorResponse}"
+                             </p>
+                           </div>
+                        </div>
+                        {!isSendingFeedback && (
+                           <div className="mt-4 text-right">
+                             <button onClick={() => { setAuthorResponse(''); setShowFeedbackForm(true); }} className="text-xs text-gray-500 hover:text-white underline">다른 메시지 보내기</button>
+                           </div>
+                        )}
+                    </div>
+                  ) : (
+                    /* Input Form */
+                    <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-6">
+                        <h3 className="text-sm font-bold text-gray-400 mb-3 flex items-center gap-2">
+                           <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                           작가와 대화하기
+                        </h3>
+                        <textarea
+                          value={feedbackInput}
+                          onChange={(e) => setFeedbackInput(e.target.value)}
+                          placeholder="소설을 읽고 느낀 점이나 아쉬운 점을 작가에게 전해주세요..."
+                          className="w-full bg-black/30 border border-white/10 rounded-xl p-4 text-white placeholder-gray-600 focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all resize-none text-sm leading-relaxed"
+                          rows={3}
+                          disabled={isSendingFeedback}
+                        />
+                        <div className="flex justify-end mt-3 gap-2">
+                           <button 
+                             onClick={() => setShowFeedbackForm(false)}
+                             className="px-4 py-2 rounded-lg text-xs font-medium text-gray-500 hover:text-gray-300 hover:bg-white/5 transition-colors"
+                           >
+                             취소
+                           </button>
+                           <button
+                             onClick={handleSendFeedback}
+                             disabled={!feedbackInput.trim() || isSendingFeedback}
+                             className="px-6 py-2 bg-white text-black text-xs font-bold rounded-lg hover:bg-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                           >
+                             {isSendingFeedback ? (
+                               <>
+                                 <svg className="animate-spin h-3 w-3 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                 전송 중...
+                               </>
+                             ) : (
+                               <>전송하기 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg></>
+                             )}
+                           </button>
+                        </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </>
         )}
     </div>
