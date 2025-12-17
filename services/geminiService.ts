@@ -52,21 +52,36 @@ const buildPrompt = (config: NovelConfiguration): string => {
     // 1. Structure & Format
     createInstruction("Format", config.format, "Default (Short Novel / Story)"),
     getLengthInstruction(config.length),
+    
+    // Custom Story Config (Free Input)
+    config.customStoryConfig ? `- **Additional Story Requirements:** ${config.customStoryConfig}` : '',
 
     // 2. Style & Tone
     createInstruction("Target Author Style", config.authorStyle, "Professional Novelist Style"),
+    createInstruction("Emotional Tone", config.emotionalTone, "Balanced"),
+    createInstruction("Narrative Pace", config.narrativePace, "Appropriate to genre"),
+    createInstruction("Narrative Mode", config.narrativeMode, "Balanced mix of dialogue and narration"),
+    
+    // 3. Author Persona (Deep)
+    createInstruction("Author's Personality", config.authorPersonality, "Professional, Objective"),
+    createInstruction("Author's Voice/Speech", config.authorTone, "Polite, Formal"),
+    
+    // Custom Author Config (Free Input)
+    config.customAuthorConfig ? `- **Additional Author Instructions:** ${config.customAuthorConfig}` : '',
+
     createInstruction("Genre", config.genre),
     createInstruction("Theme", config.theme),
     
-    // 3. Narrative Elements
+    // 4. Narrative Elements
     createInstruction("Ending Style", config.endingStyle),
     createInstruction("Point of View", config.pointOfView),
 
-    // 4. Core Content
+    // 5. Core Content
     getContentInstruction(config.content)
   ];
   
-  return instructions.join("\n");
+  // Filter out empty strings from optional custom configs
+  return instructions.filter(line => line !== '').join("\n");
 };
 
 export const generateNovelStream = async function* (config: NovelConfiguration) {
@@ -80,12 +95,7 @@ export const generateNovelStream = async function* (config: NovelConfiguration) 
   try {
     const responseStream = await ai.models.generateContentStream({
       model: 'gemini-3-pro-preview',
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: userPrompt }]
-        }
-      ],
+      contents: userPrompt,
       config: {
         systemInstruction: ALCHEMIST_SYSTEM_PROMPT,
         temperature: 0.9,
@@ -108,12 +118,21 @@ export const generateNovelStream = async function* (config: NovelConfiguration) 
 /**
  * Generates a response from the author persona based on user feedback.
  */
-export const generateFeedbackResponseStream = async function* (storyTitle: string, feedback: string) {
+export const generateFeedbackResponseStream = async function* (
+  storyTitle: string, 
+  feedback: string,
+  authorPersonality: string | null,
+  authorTone: string | null
+) {
   if (!process.env.API_KEY) {
     throw new Error("API_KEY is missing.");
   }
 
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+  // Fallback defaults if not set
+  const personality = authorPersonality || "Professional, Polite, Appreciative";
+  const tone = authorTone || "Polite Korean (존댓말), Formal";
 
   const feedbackPrompt = `
     The reader has finished reading your story titled "${storyTitle}".
@@ -123,20 +142,20 @@ export const generateFeedbackResponseStream = async function* (storyTitle: strin
     Please respond to this reader.
     
     **Constraints:**
-    1. **Persona:** You are a **professional human novelist**. You are NOT an AI, not a wizard, and not an "Alchemist". You are a writer communicating with your reader.
-    2. **Tone:** Professional, polite, appreciative, and sincere. If the feedback is critical, accept it constructively. If it is positive, thank them warmly.
+    1. **Persona:** You are the author of this story. Adopt the following personality: **${personality}**.
+    2. **Tone:** Speak in this specific tone/speech style: **${tone}**.
     3. **Language:** Korean (한국어).
     4. **Length:** A short, natural paragraph (approx. 2-4 sentences).
-    5. **Style:** Casual but polite (존댓말). Do not use metaphors about magic, potions, or alchemy. Just talk about the story, characters, or writing process.
+    5. **Style:** Do NOT use metaphors about magic, potions, or alchemy. Respond as a writer to a reader. If your personality is cynical, be cynical. If it's warm, be warm.
     6. **Format:** Text only. No markdown headers.
   `;
 
   try {
     const responseStream = await ai.models.generateContentStream({
       model: 'gemini-2.5-flash', // Faster model for chat interaction
-      contents: [{ role: 'user', parts: [{ text: feedbackPrompt }] }],
+      contents: feedbackPrompt,
       config: {
-        temperature: 0.7,
+        temperature: 0.8, // Slightly higher creativity for persona
       },
     });
 

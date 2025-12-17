@@ -1,105 +1,18 @@
 import React, { useRef, useEffect, useState } from 'react';
-import LoadingIndicator from './components/LoadingIndicator';
 import NovelRenderer from './components/NovelRenderer';
 import TemplateSelector from './components/TemplateSelector';
+import { ToggleSwitch, LengthSelector, SettingInput } from './components/InputComponents';
+import { STORY_TEMPLATES, AUTHOR_TEMPLATES } from './constants';
 import { LoadingState } from './types';
 import { useNovelGeneration } from './hooks/useNovelGeneration';
 
-// Toggle Component
-const ToggleSwitch: React.FC<{ checked: boolean; onChange: (checked: boolean) => void; label: string }> = ({ checked, onChange, label }) => (
-  <button
-    onClick={() => onChange(!checked)}
-    className={`group flex items-center gap-3 focus:outline-none transition-all duration-300 ${checked ? 'text-white' : 'text-gray-400'}`}
-    role="switch"
-    aria-checked={checked}
-  >
-    <div className={`w-10 h-6 rounded-full p-1 transition-colors duration-300 ease-in-out border border-transparent ${checked ? 'bg-primary border-primary' : 'bg-white/10 group-hover:bg-white/20'}`}>
-      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ease-in-out ${checked ? 'translate-x-4' : 'translate-x-0'}`} />
-    </div>
-    <span className={`text-xs font-bold uppercase tracking-widest transition-colors ${checked ? 'text-primary' : ''}`}>{label}</span>
-  </button>
-);
-
-// Segmented Control for Length
-const LengthSelector: React.FC<{ value: string; onChange: (val: string) => void }> = ({ value, onChange }) => {
-  const options = [
-    { label: '짧은글', value: 'Short' },
-    { label: '보통', value: 'Medium' },
-    { label: '긴글', value: 'Long' },
-    { label: '최대', value: 'Max' },
-  ];
-
-  return (
-    <div className="grid grid-cols-4 gap-2 bg-black/40 p-1.5 rounded-xl border border-white/5">
-      {options.map((opt) => (
-        <button
-          key={opt.value}
-          onClick={() => onChange(opt.value)}
-          className={`py-2 px-2 rounded-lg text-xs font-medium transition-all ${
-            value === opt.value
-              ? 'bg-primary text-black shadow-lg font-bold'
-              : 'text-gray-400 hover:text-white hover:bg-white/10'
-          }`}
-        >
-          {opt.label}
-        </button>
-      ))}
-    </div>
-  );
-};
-
-// Reusable Input Field Component for consistency
-const SettingInput: React.FC<{ 
-  label: string; 
-  isActive: boolean; 
-  onToggle: (val: boolean) => void; 
-  value: string; 
-  onChange: (val: string) => void; 
-  placeholder: string;
-}> = ({ label, isActive, onToggle, value, onChange, placeholder }) => (
-  <div className={`p-4 rounded-xl border transition-all duration-300 ${isActive ? 'bg-white/5 border-primary/30' : 'bg-white/[0.02] border-white/5 hover:bg-white/5'}`}>
-    <div className="flex justify-between items-center h-8 mb-2">
-      <label className={`text-sm font-semibold transition-colors ${isActive ? 'text-white' : 'text-gray-400'}`}>{label}</label>
-      <ToggleSwitch checked={isActive} onChange={onToggle} label={isActive ? "입력" : "자동"} />
-    </div>
-    
-    <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isActive ? 'max-h-12 opacity-100' : 'max-h-0 opacity-0'}`}>
-       <input 
-         type="text" 
-         value={value} 
-         onChange={(e) => onChange(e.target.value)} 
-         placeholder={placeholder} 
-         className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all placeholder-gray-600" 
-       />
-    </div>
-    {!isActive && (
-       <div className="h-[42px] w-full flex items-center px-1 text-sm text-gray-600 italic select-none">
-         <span className="text-xs border border-white/5 bg-white/[0.02] px-2 py-1 rounded text-gray-500">AI 작가가 결정합니다</span>
-       </div>
-    )}
-  </div>
-);
-
-
 const App: React.FC = () => {
-  const {
-    content, setContent,
-    useCustomFormat, setUseCustomFormat, format, setFormat,
-    useCustomLength, setUseCustomLength, length, setLength,
-    useCustomGenre, setUseCustomGenre, genre, setGenre,
-    useCustomTheme, setUseCustomTheme, theme, setTheme,
-    useCustomAuthor, setUseCustomAuthor, authorStyle, setAuthorStyle,
-    useCustomEnding, setUseCustomEnding, endingStyle, setEndingStyle,
-    useCustomPOV, setUseCustomPOV, pointOfView, setPointOfView,
-    novelMarkdown,
-    loadingState,
-    errorMessage,
-    generate,
-    reset,
-    applyTemplate
-  } = useNovelGeneration();
+  // Use the refactored hook which returns a unified state object and actions
+  const { state, actions } = useNovelGeneration();
+  const { config, toggles, selection, result } = state;
+  const { loadingState, errorMessage, markdown } = result;
 
-  // UI State
+  // UI Local State
   const [showAdvanced, setShowAdvanced] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const resultRef = useRef<HTMLDivElement>(null);
@@ -110,7 +23,7 @@ const App: React.FC = () => {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
     }
-  }, [content]);
+  }, [config.content]);
 
   // Scroll to result when generating starts
   useEffect(() => {
@@ -170,11 +83,29 @@ const App: React.FC = () => {
                     {/* Form Grid */}
                     <div className="space-y-6 relative z-10">
                       
-                      {/* Template Selector */}
-                      <TemplateSelector onSelect={(template) => {
-                          applyTemplate(template);
-                          setShowAdvanced(true); // Auto-open advanced settings to show changes
-                      }} />
+                      {/* Template Selectors Row */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                         <TemplateSelector 
+                           title="작품 템플릿 (Story)"
+                           templates={STORY_TEMPLATES} 
+                           onSelect={(t) => {
+                             actions.applyStoryTemplate(t);
+                             setShowAdvanced(true);
+                           }}
+                           selectedId={selection.storyTemplateId}
+                           placeholder="장르 및 형식 선택"
+                         />
+                         <TemplateSelector 
+                           title="작가 템플릿 (Author)"
+                           templates={AUTHOR_TEMPLATES} 
+                           onSelect={(t) => {
+                             actions.applyAuthorTemplate(t);
+                             setShowAdvanced(true);
+                           }}
+                           selectedId={selection.authorTemplateId}
+                           placeholder="문체 및 페르소나 선택"
+                         />
+                      </div>
 
                       {/* Main Content Input */}
                       <div className="space-y-3">
@@ -183,8 +114,8 @@ const App: React.FC = () => {
                         </label>
                         <textarea
                           ref={textareaRef}
-                          value={content}
-                          onChange={(e) => setContent(e.target.value)}
+                          value={config.content}
+                          onChange={(e) => actions.updateConfig('content', e.target.value)}
                           placeholder="어떤 이야기를 쓰고 싶으신가요? 핵심 소재, 줄거리, 혹은 떠오르는 장면을 자유롭게 적어주세요."
                           className="w-full bg-transparent text-lg text-white placeholder-gray-600 border-none focus:ring-0 resize-none outline-none leading-relaxed min-h-[120px]"
                           rows={3}
@@ -193,7 +124,7 @@ const App: React.FC = () => {
 
                       <div className="h-px bg-white/5 w-full my-6"></div>
 
-                      {/* Advanced Settings Toggle Button (Enhanced Visibility) */}
+                      {/* Advanced Settings Toggle Button */}
                       <button 
                         onClick={() => setShowAdvanced(!showAdvanced)}
                         className={`w-full flex items-center justify-between p-4 rounded-xl transition-all duration-300 border ${showAdvanced ? 'bg-white/5 border-primary/30 text-primary shadow-[0_0_15px_rgba(251,191,36,0.1)]' : 'bg-transparent border-white/10 text-gray-400 hover:bg-white/5 hover:text-gray-200 hover:border-white/20'}`}
@@ -202,7 +133,7 @@ const App: React.FC = () => {
                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
                            </svg>
-                           세부 설정 (장르, 문체, 분량 등)
+                           세부 설정 조정
                          </span>
                          <div className={`p-1 rounded-full bg-white/5 transition-transform duration-300 ${showAdvanced ? 'rotate-180 bg-primary/20 text-primary' : ''}`}>
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -211,7 +142,7 @@ const App: React.FC = () => {
                          </div>
                       </button>
 
-                      {/* Collapsible Advanced Settings (Reorganized) */}
+                      {/* Collapsible Advanced Settings */}
                       <div className={`overflow-hidden transition-all duration-500 ease-in-out ${showAdvanced ? 'max-h-[1600px] opacity-100' : 'max-h-0 opacity-0'}`}>
                           
                           <div className="pt-6 pb-2 space-y-8">
@@ -225,31 +156,31 @@ const App: React.FC = () => {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                   <SettingInput 
                                       label="장르" 
-                                      isActive={useCustomGenre} 
-                                      onToggle={setUseCustomGenre} 
-                                      value={genre} 
-                                      onChange={setGenre} 
+                                      isActive={toggles.useCustomGenre} 
+                                      onToggle={() => actions.toggleConfig('useCustomGenre')}
+                                      value={config.genre} 
+                                      onChange={(v) => actions.updateConfig('genre', v)} 
                                       placeholder="예: 스릴러, 로맨스, 판타지" 
                                   />
 
                                   <SettingInput 
                                       label="글의 형식" 
-                                      isActive={useCustomFormat} 
-                                      onToggle={setUseCustomFormat} 
-                                      value={format} 
-                                      onChange={setFormat} 
+                                      isActive={toggles.useCustomFormat} 
+                                      onToggle={() => actions.toggleConfig('useCustomFormat')}
+                                      value={config.format} 
+                                      onChange={(v) => actions.updateConfig('format', v)} 
                                       placeholder="예: 단편소설, 시나리오, 에세이" 
                                   />
 
-                                  <div className={`p-4 rounded-xl border transition-all duration-300 ${useCustomLength ? 'bg-white/5 border-primary/30' : 'bg-white/[0.02] border-white/5 hover:bg-white/5'}`}>
+                                  <div className={`p-4 rounded-xl border transition-all duration-300 ${toggles.useCustomLength ? 'bg-white/5 border-primary/30' : 'bg-white/[0.02] border-white/5 hover:bg-white/5'}`}>
                                       <div className="flex justify-between items-center h-8 mb-2">
-                                        <label className={`text-sm font-semibold transition-colors ${useCustomLength ? 'text-white' : 'text-gray-400'}`}>글의 분량</label>
-                                        <ToggleSwitch checked={useCustomLength} onChange={setUseCustomLength} label={useCustomLength ? "선택" : "자동"} />
+                                        <label className={`text-sm font-semibold transition-colors ${toggles.useCustomLength ? 'text-white' : 'text-gray-400'}`}>글의 분량</label>
+                                        <ToggleSwitch checked={toggles.useCustomLength} onChange={() => actions.toggleConfig('useCustomLength')} label={toggles.useCustomLength ? "선택" : "자동"} />
                                       </div>
-                                      <div className={`overflow-hidden transition-all duration-300 ease-in-out ${useCustomLength ? 'max-h-12 opacity-100' : 'max-h-0 opacity-0'}`}>
-                                          <LengthSelector value={length} onChange={setLength} />
+                                      <div className={`overflow-hidden transition-all duration-300 ease-in-out ${toggles.useCustomLength ? 'max-h-12 opacity-100' : 'max-h-0 opacity-0'}`}>
+                                          <LengthSelector value={config.length} onChange={(v) => actions.updateConfig('length', v)} />
                                       </div>
-                                      {!useCustomLength && (
+                                      {!toggles.useCustomLength && (
                                         <div className="h-[42px] w-full flex items-center px-1 text-sm text-gray-600 italic select-none">
                                           <span className="text-xs border border-white/5 bg-white/[0.02] px-2 py-1 rounded text-gray-500">AI 작가가 결정합니다</span>
                                         </div>
@@ -258,12 +189,23 @@ const App: React.FC = () => {
 
                                   <SettingInput 
                                       label="결말 방향" 
-                                      isActive={useCustomEnding} 
-                                      onToggle={setUseCustomEnding} 
-                                      value={endingStyle} 
-                                      onChange={setEndingStyle} 
+                                      isActive={toggles.useCustomEnding} 
+                                      onToggle={() => actions.toggleConfig('useCustomEnding')}
+                                      value={config.endingStyle} 
+                                      onChange={(v) => actions.updateConfig('endingStyle', v)} 
                                       placeholder="예: 반전 결말, 해피엔딩, 열린 결말" 
                                   />
+
+                                  <div className="md:col-span-2">
+                                    <SettingInput 
+                                        label="기타 작품 설정 (자유 입력)" 
+                                        isActive={toggles.useCustomStoryConfig} 
+                                        onToggle={() => actions.toggleConfig('useCustomStoryConfig')}
+                                        value={config.customStoryConfig} 
+                                        onChange={(v) => actions.updateConfig('customStoryConfig', v)} 
+                                        placeholder="예: 특정 연도 배경, 금기 사항 등 자유롭게 입력하세요." 
+                                    />
+                                  </div>
                                 </div>
                              </div>
 
@@ -279,30 +221,86 @@ const App: React.FC = () => {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                   <SettingInput 
                                       label="문체 스타일" 
-                                      isActive={useCustomAuthor} 
-                                      onToggle={setUseCustomAuthor} 
-                                      value={authorStyle} 
-                                      onChange={setAuthorStyle} 
+                                      isActive={toggles.useCustomAuthor} 
+                                      onToggle={() => actions.toggleConfig('useCustomAuthor')}
+                                      value={config.authorStyle} 
+                                      onChange={(v) => actions.updateConfig('authorStyle', v)} 
                                       placeholder="예: 건조한, 감성적인, 유머러스한" 
                                   />
                                   
                                   <SettingInput 
                                       label="시점 (POV)" 
-                                      isActive={useCustomPOV} 
-                                      onToggle={setUseCustomPOV} 
-                                      value={pointOfView} 
-                                      onChange={setPointOfView} 
+                                      isActive={toggles.useCustomPOV} 
+                                      onToggle={() => actions.toggleConfig('useCustomPOV')}
+                                      value={config.pointOfView} 
+                                      onChange={(v) => actions.updateConfig('pointOfView', v)} 
                                       placeholder="예: 1인칭 주인공, 3인칭 전지적" 
                                   />
 
                                   <SettingInput 
+                                      label="정서적 분위기 (Tone)" 
+                                      isActive={toggles.useCustomTone} 
+                                      onToggle={() => actions.toggleConfig('useCustomTone')}
+                                      value={config.emotionalTone} 
+                                      onChange={(v) => actions.updateConfig('emotionalTone', v)} 
+                                      placeholder="예: 우울한, 희망찬, 냉소적인" 
+                                  />
+
+                                  <SettingInput 
+                                      label="전개 속도 (Pace)" 
+                                      isActive={toggles.useCustomPace} 
+                                      onToggle={() => actions.toggleConfig('useCustomPace')}
+                                      value={config.narrativePace} 
+                                      onChange={(v) => actions.updateConfig('narrativePace', v)} 
+                                      placeholder="예: 속도감 있는, 서정적이고 느린" 
+                                  />
+                                  
+                                  <SettingInput 
+                                      label="서술 방식 (Mode)" 
+                                      isActive={toggles.useCustomMode} 
+                                      onToggle={() => actions.toggleConfig('useCustomMode')}
+                                      value={config.narrativeMode} 
+                                      onChange={(v) => actions.updateConfig('narrativeMode', v)} 
+                                      placeholder="예: 대화 위주의, 묘사 중심의, 독백 위주" 
+                                  />
+
+                                  <SettingInput 
+                                      label="작가의 성격 (Personality)" 
+                                      isActive={toggles.useCustomPersonality} 
+                                      onToggle={() => actions.toggleConfig('useCustomPersonality')}
+                                      value={config.authorPersonality} 
+                                      onChange={(v) => actions.updateConfig('authorPersonality', v)} 
+                                      placeholder="예: 까칠한, 다정한, 완벽주의자" 
+                                  />
+
+                                  <SettingInput 
+                                      label="작가의 말투 (Speech)" 
+                                      isActive={toggles.useCustomSpeech} 
+                                      onToggle={() => actions.toggleConfig('useCustomSpeech')}
+                                      value={config.authorTone} 
+                                      onChange={(v) => actions.updateConfig('authorTone', v)} 
+                                      placeholder="예: 정중한 해요체, 반말 투, 사투리" 
+                                  />
+
+                                  <SettingInput 
                                       label="주제/메시지" 
-                                      isActive={useCustomTheme} 
-                                      onToggle={setUseCustomTheme} 
-                                      value={theme} 
-                                      onChange={setTheme} 
+                                      isActive={toggles.useCustomTheme} 
+                                      onToggle={() => actions.toggleConfig('useCustomTheme')}
+                                      value={config.theme} 
+                                      onChange={(v) => actions.updateConfig('theme', v)} 
                                       placeholder="예: 성장, 복수, 사랑의 영원함" 
                                   />
+
+                                  <div className="md:col-span-2">
+                                    <SettingInput 
+                                        label="기타 작가 설정 (자유 입력)" 
+                                        isActive={toggles.useCustomAuthorConfig} 
+                                        onToggle={() => actions.toggleConfig('useCustomAuthorConfig')}
+                                        value={config.customAuthorConfig} 
+                                        onChange={(v) => actions.updateConfig('customAuthorConfig', v)} 
+                                        placeholder="예: 특정 작가 스타일 모방, 문장 길이 제약 등" 
+                                    />
+                                  </div>
                                 </div>
                              </div>
 
@@ -313,7 +311,7 @@ const App: React.FC = () => {
                     {/* Action Bar */}
                     <div className="flex justify-end items-center mt-8 pt-6 border-t border-white/5">
                       <button
-                        onClick={generate}
+                        onClick={actions.generate}
                         className="relative px-8 py-3 bg-white text-black font-semibold rounded-full overflow-hidden transition-all hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_30px_rgba(255,255,255,0.4)]"
                       >
                         <span className="relative z-10 flex items-center gap-2 text-sm tracking-wide">
@@ -336,7 +334,7 @@ const App: React.FC = () => {
               <h3 className="text-xl font-bold text-white mb-2">오류 발생</h3>
               <p className="text-gray-400 mb-6">{errorMessage}</p>
               <button 
-                onClick={reset}
+                onClick={actions.reset}
                 className="px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full text-sm font-medium transition-colors"
               >
                 다시 시도
@@ -365,13 +363,18 @@ const App: React.FC = () => {
                  )}
               </div>
 
-              <NovelRenderer rawMarkdown={novelMarkdown} isStreaming={isGenerating} />
+              <NovelRenderer 
+                rawMarkdown={markdown} 
+                isStreaming={isGenerating} 
+                authorPersonality={toggles.useCustomPersonality ? config.authorPersonality : null}
+                authorTone={toggles.useCustomSpeech ? config.authorTone : null}
+              />
               
               {/* Footer Actions (Only show when complete) */}
               {isComplete && (
                 <div className="fixed bottom-8 left-0 right-0 flex justify-center pointer-events-none z-20 animate-slide-up">
                    <button
-                      onClick={reset}
+                      onClick={actions.reset}
                       className="pointer-events-auto px-6 py-3 bg-surface/90 backdrop-blur-md text-gray-300 hover:text-white border border-white/10 hover:border-white/30 rounded-full shadow-lg transition-all hover:-translate-y-1 font-medium text-sm flex items-center gap-2 group"
                    >
                      <svg className="w-4 h-4 text-gray-500 group-hover:text-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>

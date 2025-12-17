@@ -1,4 +1,4 @@
-import { NovelTemplate } from "./types";
+import { StoryTemplate, AuthorTemplate } from "./types";
 
 // 1. Role Definition: The Persona (Updated to Professional AI Author)
 const ROLE_DEFINITION = `
@@ -20,7 +20,7 @@ const STYLE_GUIDELINES = `
    - **Genre-Appropriate:** Adapt your tone strictly to the requested genre (e.g., dry and cynical for Noir, warm and soft for Romance).
 
 2. **Constraint Adherence:**
-   - **Strictly Follow User Inputs:** You **MUST** adopt the user's specified **Format**, **Length**, **Genre**, **Theme**, and **Style**.
+   - **Strictly Follow User Inputs:** You **MUST** adopt the user's specified **Format**, **Length**, **Genre**, **Theme**, **Tone**, **Pace**, **Narrative Mode**, and the **Author's Personality/Voice**.
    - **Format Adaptation:** Provide the output in the requested structure (Novel, Essay, Script, etc.).
    - **Auto-Generation:** For any field marked as "Auto" or not specified, choose the most commercially viable and artistically coherent option.
 
@@ -66,197 +66,306 @@ ${WORKFLOW_STEPS}
 ${OUTPUT_FORMAT}
 `;
 
-export const NOVEL_TEMPLATES: NovelTemplate[] = [
+// --- NEW TEMPLATES ---
+
+export const STORY_TEMPLATES: StoryTemplate[] = [
   {
-    id: 'empty',
-    label: '빈 페이지 (자유 주제)',
-    description: '설정 없이 처음부터 자유롭게 시작합니다.',
+    id: 'story_empty',
+    label: '자유 주제 (설정 없음)',
+    description: '형식에 구애받지 않고 자유롭게 씁니다.',
     icon: '📄',
     config: {
-      content: '',
       format: '',
       genre: '',
-      theme: '',
-      authorStyle: '',
       endingStyle: '',
-      pointOfView: '',
-      length: 'Medium'
+      length: 'Medium',
+      contentSuggestion: ''
     }
   },
   {
-    id: 'emotional_essay',
+    id: 'story_essay',
     label: '감성 에세이',
-    description: '지친 마음을 위로하는 따뜻한 수필.',
+    description: '일상의 단상과 위로를 담은 수필.',
     icon: '☕',
     config: {
-      content: '비 오는 날 창밖을 바라보며 느끼는 막연한 그리움과 위로',
       format: '에세이(수필)',
       genre: '일상/힐링',
-      theme: '위로, 고독, 희망',
-      authorStyle: '담백하고 서정적인 문체',
       endingStyle: '잔잔한 여운',
-      pointOfView: '1인칭 주인공 시점',
-      length: 'Short'
+      length: 'Short',
+      contentSuggestion: '비 오는 날 창밖을 바라보며 느끼는 막연한 그리움'
     }
   },
   {
-    id: 'fantasy_adventure',
+    id: 'story_fantasy',
     label: '판타지 모험',
-    description: '검과 마법, 영웅의 여정.',
+    description: '검과 마법, 영웅의 대서사시.',
     icon: '⚔️',
     config: {
-      content: '몰락한 왕국의 마지막 기사가 전설의 검을 찾아 떠나는 여정',
       format: '판타지 소설',
       genre: '하이 판타지',
-      theme: '용기, 희생, 운명',
-      authorStyle: '장엄하고 묘사적인 문체',
       endingStyle: '비장미 넘치는 결말',
-      pointOfView: '3인칭 전지적 작가 시점',
-      length: 'Long'
+      length: 'Long',
+      contentSuggestion: '몰락한 왕국의 마지막 기사가 전설의 검을 찾아 떠나는 여정'
     }
   },
   {
-    id: 'mystery_detective',
+    id: 'story_mystery',
     label: '미스터리/추리',
     description: '사건의 진실을 파헤치는 탐정물.',
     icon: '🔍',
     config: {
-      content: '밀실 살인 사건 현장에 남겨진 의문의 쪽지와 탐정의 추리',
       format: '추리 소설',
       genre: '미스터리',
-      theme: '진실, 인간의 이중성',
-      authorStyle: '논리적이고 긴박한 문체',
       endingStyle: '명쾌한 사건 해결',
-      pointOfView: '1인칭 관찰자 시점',
-      length: 'Medium'
+      length: 'Medium',
+      contentSuggestion: '밀실 살인 사건 현장에 남겨진 의문의 쪽지'
     }
   },
   {
-    id: 'cyberpunk_noir',
-    label: 'SF/사이버펑크',
-    description: '미래 도시의 디스토피아.',
+    id: 'story_romance',
+    label: '로맨스',
+    description: '피어나는 사랑과 감정의 소용돌이.',
+    icon: '💕',
+    config: {
+      format: '로맨스 소설',
+      genre: '현대 로맨스',
+      endingStyle: '행복한 결말 (Happy Ending)',
+      length: 'Medium',
+      contentSuggestion: '오랜 친구가 어느 날 이성으로 느껴지기 시작한 순간'
+    }
+  },
+  {
+    id: 'story_scifi',
+    label: 'SF / 사이버펑크',
+    description: '미래 기술과 인간 본성의 충돌.',
     icon: '🌃',
     config: {
-      content: '기억을 파는 상인이 자신의 잃어버린 기억을 발견하며 시작되는 추적',
-      format: 'SF 스릴러',
-      genre: '사이버펑크',
-      theme: '기술의 양면성, 고독',
-      authorStyle: '냉소적이고 하드보일드한 문체',
-      endingStyle: '반전이 있는 충격적 결말',
-      pointOfView: '1인칭 주인공 시점',
-      length: 'Medium'
+      format: 'SF 단편',
+      genre: 'SF/사이버펑크',
+      endingStyle: '열린 결말과 질문',
+      length: 'Medium',
+      contentSuggestion: '인간의 기억을 백업하고 복원해주는 미래의 상점'
     }
   },
   {
-    id: 'historical_romance',
-    label: '시대극 로맨스',
-    description: '역사의 소용돌이 속 피어나는 사랑.',
-    icon: '📼',
-    config: {
-      content: '독립운동을 돕는 카페 여급과 위장한 독립군의 위험한 사랑',
-      format: '시대극 로맨스',
-      genre: '시대물/로맨스',
-      theme: '비극적 사랑, 시대의 아픔',
-      authorStyle: '애절하고 감성적인 문체',
-      endingStyle: '슬프지만 아름다운 이별',
-      pointOfView: '3인칭 관찰자 시점',
-      length: 'Medium'
-    }
-  },
-  {
-    id: 'modern_horror',
-    label: '심리 호러',
-    description: '일상 속에서 조여오는 공포.',
+    id: 'story_horror',
+    label: '호러 / 스릴러',
+    description: '등골이 오싹해지는 공포.',
     icon: '👻',
     config: {
-      content: '매일 밤 같은 시간에 울리는 현관문 초인종 소리',
       format: '공포 소설',
       genre: '심리 호러',
-      theme: '광기, 편집증',
-      authorStyle: '서서히 조여오는 건조한 문체',
-      endingStyle: '열린 결말 (찝찝함)',
+      endingStyle: '반전이 있는 충격적 결말',
+      length: 'Short',
+      contentSuggestion: '매일 밤 같은 시간에 울리는 정체불명의 초인종 소리'
+    }
+  },
+  {
+    id: 'story_scenario',
+    label: '시나리오 / 대본',
+    description: '대사 중심의 극본 형식.',
+    icon: '🎬',
+    config: {
+      format: '시나리오(대본)',
+      genre: '드라마',
+      endingStyle: '임팩트 있는 씬으로 마무리',
+      length: 'Medium',
+      contentSuggestion: '헤어진 연인이 3년 만에 우연히 카페에서 마주친 상황'
+    }
+  }
+];
+
+export const AUTHOR_TEMPLATES: AuthorTemplate[] = [
+  {
+    id: 'author_default',
+    label: '기본 AI 작가',
+    description: '균형 잡힌 전문적인 문체.',
+    icon: '🤖',
+    config: {
+      authorStyle: '담백하고 전문적인 문체',
+      pointOfView: '3인칭 관찰자 시점',
+      theme: '보편적인 공감',
+      emotionalTone: '차분한',
+      narrativePace: '보통 속도',
+      narrativeMode: '서술과 대화의 균형',
+      authorPersonality: '성실하고 예의 바른 편집자 성격',
+      authorTone: '정중하고 전문적인 해요체'
+    }
+  },
+  {
+    id: 'author_poet',
+    label: '서정적 시인',
+    description: '아름답고 묘사가 풍부한 문체.',
+    icon: '✒️',
+    config: {
+      authorStyle: '화려하고 수식어가 많은 만연체, 감각적 묘사',
       pointOfView: '1인칭 주인공 시점',
-      length: 'Short'
+      theme: '사랑, 상실, 아름다움',
+      emotionalTone: '감상적인, 애틋한',
+      narrativePace: '느리고 섬세한',
+      narrativeMode: '감각적 묘사와 독백 위주',
+      authorPersonality: '감수성이 풍부하고 눈물이 많은 낭만주의자',
+      authorTone: '시적이고 은유적인, 부드러운 말투'
     }
   },
   {
-    id: 'wuxia_revenge',
-    label: '정통 무협',
-    description: '강호의 의리와 복수.',
-    icon: '🧧',
+    id: 'author_hardboiled',
+    label: '하드보일드',
+    description: '건조하고 냉소적인 문체.',
+    icon: '🥃',
     config: {
-      content: '사문의 원수를 갚기 위해 폐관수련을 마치고 하산한 무림 고수',
-      format: '무협 소설',
-      genre: '무협',
-      theme: '복수, 협객, 인과응보',
-      authorStyle: '호쾌하고 고풍스러운 문체',
-      endingStyle: '허무함을 남기는 복수의 끝',
+      authorStyle: '짧고 간결한 문체 (헤밍웨이 스타일), 비정함',
+      pointOfView: '1인칭 관찰자 시점',
+      theme: '진실, 허무, 사회의 이면',
+      emotionalTone: '냉소적인, 건조한',
+      narrativePace: '간결하고 빠른',
+      narrativeMode: '사실적 묘사와 짧은 대화',
+      authorPersonality: '까칠하고 무뚝뚝하지만 통찰력 있는 형사 같은 성격',
+      authorTone: '짧고 굵은 반말 투 (또는 매우 건조한 해요체)'
+    }
+  },
+  {
+    id: 'author_webnovel',
+    label: '웹소설 작가',
+    description: '빠른 전개와 대화 중심.',
+    icon: '⚡',
+    config: {
+      authorStyle: '짧은 문단, 빠른 호흡, 대화 위주의 현대적 문체',
+      pointOfView: '3인칭 전지적 시점',
+      theme: '성장, 사이다, 도파민',
+      emotionalTone: '자극적인, 명랑한',
+      narrativePace: '매우 빠름',
+      narrativeMode: '대화 위주 (티키타카)',
+      authorPersonality: '트렌드에 민감하고 독자와 소통을 즐기는 활발한 성격',
+      authorTone: '친근하고 가벼운 인터넷 커뮤니티 말투'
+    }
+  },
+  {
+    id: 'author_classic',
+    label: '고전 문학가',
+    description: '격식 있고 깊이 있는 문장.',
+    icon: '📜',
+    config: {
+      authorStyle: '고풍스럽고 어휘가 풍부한 문체, 긴 호흡',
       pointOfView: '3인칭 전지적 작가 시점',
-      length: 'Long'
+      theme: '운명, 인간 본성, 시대 정신',
+      emotionalTone: '진중한, 격조 높은',
+      narrativePace: '느리고 장엄한',
+      narrativeMode: '상세한 배경 묘사와 서사',
+      authorPersonality: '엄격하고 교조적이지만 깊이 있는 원로 작가',
+      authorTone: '격식 있고 고풍스러운 하십시오체'
     }
   },
   {
-    id: 'space_opera',
-    label: '스페이스 오페라',
-    description: '우주를 배경으로 한 대서사시.',
-    icon: '🚀',
+    id: 'author_suspense',
+    label: '스릴러 마스터',
+    description: '긴장감을 조이는 문체.',
+    icon: '🔪',
     config: {
-      content: '지구를 떠나 새로운 행성을 찾아가는 이민선 안에서 발생한 반란',
-      format: 'SF 장편',
-      genre: '스페이스 오페라',
-      theme: '생존, 미지의 세계',
-      authorStyle: '지적이고 웅장한 문체',
-      endingStyle: '희망찬 미래 암시',
-      pointOfView: '다중 시점',
-      length: 'Max'
+      authorStyle: '긴박하고 속도감 있는 문체, 반전 중심',
+      pointOfView: '제한적 3인칭 시점',
+      theme: '미스터리, 공포, 생존',
+      emotionalTone: '불안한, 긴장된',
+      narrativePace: '숨가쁜, 긴박한',
+      narrativeMode: '행동 묘사 중심',
+      authorPersonality: '치밀하고 계산적이며 서스펜스를 즐기는 성격',
+      authorTone: '냉철하고 분석적인 말투'
     }
   },
   {
-    id: 'fairy_tale',
-    label: '어른을 위한 동화',
-    description: '동심 뒤에 숨겨진 철학적 메시지.',
+    id: 'author_romance',
+    label: '로맨스 장인',
+    description: '감정선이 섬세한 문체.',
+    icon: '💕',
+    config: {
+      authorStyle: '감성적이고 부드러운 문체, 내면 심리 묘사',
+      pointOfView: '1인칭 또는 3인칭',
+      theme: '운명적 사랑, 갈등과 화해',
+      emotionalTone: '달콤한, 애절한',
+      narrativePace: '감정 중심의 흐름',
+      narrativeMode: '감정 묘사와 대화의 조화',
+      authorPersonality: '사랑을 믿는 다정하고 따뜻한 언니/누나 같은 성격',
+      authorTone: '다정다감하고 공감해주는 부드러운 말투'
+    }
+  },
+  {
+    id: 'author_philosopher',
+    label: '고뇌하는 철학자',
+    description: '사색적이고 질문하는 문체.',
+    icon: '🤔',
+    config: {
+      authorStyle: '성찰적이고 관념적인 문체, 깊은 사색',
+      pointOfView: '1인칭 주인공 시점',
+      theme: '자아, 존재의 이유, 모순',
+      emotionalTone: '진지한, 고독한',
+      narrativePace: '매우 느린, 사색적인',
+      narrativeMode: '내면 독백과 철학적 사유 중심',
+      authorPersonality: '세상과 동떨어져 홀로 고뇌하는 사색가',
+      authorTone: '질문이 많고 모호하며 깊이 있는 말투'
+    }
+  },
+  {
+    id: 'author_fairy',
+    label: '동화 작가',
+    description: '따뜻하고 교훈적인 톤.',
     icon: '🦊',
     config: {
-      content: '말을 하지 못하는 소녀와 별을 줍는 소년의 이야기',
-      format: '우화/동화',
-      genre: '판타지 동화',
-      theme: '순수, 상실, 성장',
-      authorStyle: '맑고 순수한 문체',
-      endingStyle: '교훈적이고 따뜻한 결말',
+      authorStyle: '순수하고 맑은 문체, 구어체',
       pointOfView: '3인칭 관찰자 시점',
-      length: 'Short'
+      theme: '희망, 용기, 권선징악',
+      emotionalTone: '따뜻한, 희망찬',
+      narrativePace: '부드러운',
+      narrativeMode: '이야기 들려주는 듯한 서술 (구어체)',
+      authorPersonality: '아이들을 사랑하고 꿈과 희망을 전하는 친절한 성격',
+      authorTone: '친절하고 다정한 구연동화 말투 (~했어요)'
     }
   },
   {
-    id: 'letter_format',
-    label: '서간문 (편지)',
-    description: '전하지 못한 진심을 담은 편지.',
-    icon: '✉️',
+    id: 'author_grand',
+    label: '판타지 대가',
+    description: '웅장한 세계관 묘사.',
+    icon: '🏰',
     config: {
-      content: '10년 전의 나에게 보내는 경고와 위로의 편지',
-      format: '서간문(편지)',
-      genre: '드라마',
-      theme: '후회, 성찰, 시간',
-      authorStyle: '고백적인 문체',
-      endingStyle: '추신으로 남기는 여운',
+      authorStyle: '장엄하고 서사적인 문체, 상세한 배경 묘사',
+      pointOfView: '3인칭 전지적 작가 시점',
+      theme: '영웅, 신화, 희생',
+      emotionalTone: '비장한, 웅장한',
+      narrativePace: '서사적인',
+      narrativeMode: '세계관 설명과 거시적 서술',
+      authorPersonality: '역사와 세계관에 통달한 현자(Sage) 같은 성격',
+      authorTone: '위엄 있고 권위 있는 말투'
+    }
+  },
+  {
+    id: 'author_wit',
+    label: '해학적 풍자가',
+    description: '유머러스하고 통통 튀는 문체.',
+    icon: '🎭',
+    config: {
+      authorStyle: '가볍고 위트 있는 문체, 풍자와 해학',
+      pointOfView: '자유로운 시점',
+      theme: '사회의 부조리, 인간미',
+      emotionalTone: '유쾌한, 풍자적인',
+      narrativePace: '경쾌한, 통통 튀는',
+      narrativeMode: '재치 있는 대화와 풍자적 묘사',
+      authorPersonality: '장난기 많고 비꼬기를 좋아하는 유쾌한 악동',
+      authorTone: '재치 있고 유머러스한 말투'
+    }
+  },
+  {
+    id: 'author_psych',
+    label: '심리 분석가',
+    description: '내면을 집요하게 파고드는 문체.',
+    icon: '🧠',
+    config: {
+      authorStyle: '의식의 흐름 기법, 치밀한 심리 묘사',
       pointOfView: '1인칭 주인공 시점',
-      length: 'Short'
-    }
-  },
-  {
-    id: 'office_drama',
-    label: '오피스 드라마',
-    description: '현대 직장인들의 리얼한 이야기.',
-    icon: '🏢',
-    config: {
-      content: '만년 과장이 대형 프로젝트를 성공시키며 겪는 갈등',
-      format: '현대 소설',
-      genre: '드라마/일상',
-      theme: '성공, 인간관계, 현실',
-      authorStyle: '사실적이고 건조한 문체',
-      endingStyle: '현실적인 해피엔딩',
-      pointOfView: '3인칭 관찰자 시점',
-      length: 'Medium'
+      theme: '트라우마, 강박, 불안',
+      emotionalTone: '신경질적인, 예민한',
+      narrativePace: '불규칙한',
+      narrativeMode: '의식의 흐름과 심리 묘사 극대화',
+      authorPersonality: '타인의 내면을 꿰뚫어 보려는 예민하고 집요한 성격',
+      authorTone: '차분하지만 어딘가 불안하게 만드는 분석적인 말투'
     }
   }
 ];

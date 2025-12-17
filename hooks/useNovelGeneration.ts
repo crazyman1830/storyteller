@@ -1,139 +1,327 @@
-import { useState, useCallback } from 'react';
+import { useReducer, useCallback } from 'react';
 import { generateNovelStream } from '../services/geminiService';
-import { NovelConfiguration, LoadingState, NovelTemplate } from '../types';
+import { NovelConfiguration, LoadingState, StoryTemplate, AuthorTemplate } from '../types';
+
+// --- State Definitions ---
+
+interface ConfigState {
+  content: string;
+  format: string;
+  length: string;
+  genre: string;
+  theme: string;
+  authorStyle: string;
+  endingStyle: string;
+  pointOfView: string;
+  emotionalTone: string;
+  narrativePace: string;
+  narrativeMode: string;
+  authorPersonality: string;
+  authorTone: string;
+  customStoryConfig: string;
+  customAuthorConfig: string;
+}
+
+interface TogglesState {
+  useCustomFormat: boolean;
+  useCustomLength: boolean;
+  useCustomGenre: boolean;
+  useCustomTheme: boolean;
+  useCustomAuthor: boolean;
+  useCustomEnding: boolean;
+  useCustomPOV: boolean;
+  useCustomTone: boolean;
+  useCustomPace: boolean;
+  useCustomMode: boolean;
+  useCustomPersonality: boolean;
+  useCustomSpeech: boolean;
+  useCustomStoryConfig: boolean;
+  useCustomAuthorConfig: boolean;
+}
+
+interface GenerationState {
+  config: ConfigState;
+  toggles: TogglesState;
+  selection: {
+    storyTemplateId: string;
+    authorTemplateId: string;
+  };
+  result: {
+    markdown: string;
+    loadingState: LoadingState;
+    errorMessage: string | null;
+  };
+}
+
+// --- Initial State ---
+
+const initialConfig: ConfigState = {
+  content: '',
+  format: '',
+  length: 'Medium',
+  genre: '',
+  theme: '',
+  authorStyle: '',
+  endingStyle: '',
+  pointOfView: '',
+  emotionalTone: '',
+  narrativePace: '',
+  narrativeMode: '',
+  authorPersonality: '',
+  authorTone: '',
+  customStoryConfig: '',
+  customAuthorConfig: '',
+};
+
+const initialToggles: TogglesState = {
+  useCustomFormat: false,
+  useCustomLength: false,
+  useCustomGenre: false,
+  useCustomTheme: false,
+  useCustomAuthor: false,
+  useCustomEnding: false,
+  useCustomPOV: false,
+  useCustomTone: false,
+  useCustomPace: false,
+  useCustomMode: false,
+  useCustomPersonality: false,
+  useCustomSpeech: false,
+  useCustomStoryConfig: false,
+  useCustomAuthorConfig: false,
+};
+
+const initialState: GenerationState = {
+  config: initialConfig,
+  toggles: initialToggles,
+  selection: {
+    storyTemplateId: '',
+    authorTemplateId: '',
+  },
+  result: {
+    markdown: '',
+    loadingState: LoadingState.IDLE,
+    errorMessage: null,
+  },
+};
+
+// --- Reducer ---
+
+type Action =
+  | { type: 'SET_FIELD'; field: keyof ConfigState; value: string }
+  | { type: 'TOGGLE_FIELD'; field: keyof TogglesState }
+  | { type: 'SET_TOGGLE'; field: keyof TogglesState; value: boolean }
+  | { type: 'APPLY_STORY_TEMPLATE'; template: StoryTemplate }
+  | { type: 'APPLY_AUTHOR_TEMPLATE'; template: AuthorTemplate }
+  | { type: 'START_GENERATION' }
+  | { type: 'APPEND_GENERATION'; chunk: string }
+  | { type: 'COMPLETE_GENERATION' }
+  | { type: 'ERROR_GENERATION'; message: string }
+  | { type: 'RESET' };
+
+function reducer(state: GenerationState, action: Action): GenerationState {
+  switch (action.type) {
+    case 'SET_FIELD':
+      return {
+        ...state,
+        config: { ...state.config, [action.field]: action.value },
+      };
+    case 'TOGGLE_FIELD':
+      return {
+        ...state,
+        toggles: { ...state.toggles, [action.field]: !state.toggles[action.field] },
+      };
+    case 'SET_TOGGLE':
+      return {
+        ...state,
+        toggles: { ...state.toggles, [action.field]: action.value },
+      };
+    case 'APPLY_STORY_TEMPLATE': {
+      const { config } = action.template;
+      // Only set content if empty
+      const newContent = (config.contentSuggestion && !state.config.content) 
+        ? config.contentSuggestion 
+        : state.config.content;
+
+      return {
+        ...state,
+        config: {
+          ...state.config,
+          content: newContent,
+          format: config.format,
+          genre: config.genre,
+          endingStyle: config.endingStyle,
+          length: config.length || 'Medium',
+        },
+        toggles: {
+          ...state.toggles,
+          useCustomFormat: !!config.format,
+          useCustomGenre: !!config.genre,
+          useCustomEnding: !!config.endingStyle,
+          useCustomLength: !!config.length,
+        },
+        selection: {
+          ...state.selection,
+          storyTemplateId: action.template.id,
+        }
+      };
+    }
+    case 'APPLY_AUTHOR_TEMPLATE': {
+      const { config } = action.template;
+      return {
+        ...state,
+        config: {
+          ...state.config,
+          authorStyle: config.authorStyle,
+          pointOfView: config.pointOfView,
+          theme: config.theme,
+          emotionalTone: config.emotionalTone || '',
+          narrativePace: config.narrativePace || '',
+          narrativeMode: config.narrativeMode || '',
+          authorPersonality: config.authorPersonality || '',
+          authorTone: config.authorTone || '',
+        },
+        toggles: {
+          ...state.toggles,
+          useCustomAuthor: !!config.authorStyle,
+          useCustomPOV: !!config.pointOfView,
+          useCustomTheme: !!config.theme,
+          useCustomTone: !!config.emotionalTone,
+          useCustomPace: !!config.narrativePace,
+          useCustomMode: !!config.narrativeMode,
+          useCustomPersonality: !!config.authorPersonality,
+          useCustomSpeech: !!config.authorTone,
+        },
+        selection: {
+          ...state.selection,
+          authorTemplateId: action.template.id,
+        }
+      };
+    }
+    case 'START_GENERATION':
+      return {
+        ...state,
+        result: {
+          markdown: '',
+          loadingState: LoadingState.GENERATING,
+          errorMessage: null,
+        },
+      };
+    case 'APPEND_GENERATION':
+      return {
+        ...state,
+        result: {
+          ...state.result,
+          markdown: state.result.markdown + action.chunk,
+        },
+      };
+    case 'COMPLETE_GENERATION':
+      return {
+        ...state,
+        result: {
+          ...state.result,
+          loadingState: LoadingState.COMPLETE,
+        },
+      };
+    case 'ERROR_GENERATION':
+      return {
+        ...state,
+        result: {
+          ...state.result,
+          loadingState: LoadingState.ERROR,
+          errorMessage: action.message,
+        },
+      };
+    case 'RESET':
+      return {
+        ...state,
+        result: {
+          markdown: '',
+          loadingState: LoadingState.IDLE,
+          errorMessage: null,
+        },
+      };
+    default:
+      return state;
+  }
+}
+
+// --- Hook ---
 
 export const useNovelGeneration = () => {
-  // Configuration State
-  const [content, setContent] = useState<string>('');
-  
-  const [useCustomFormat, setUseCustomFormat] = useState<boolean>(false);
-  const [format, setFormat] = useState<string>('');
+  const [state, dispatch] = useReducer(reducer, initialState);
 
-  const [useCustomLength, setUseCustomLength] = useState<boolean>(false);
-  const [length, setLength] = useState<string>('Medium');
-
-  const [useCustomGenre, setUseCustomGenre] = useState<boolean>(false);
-  const [genre, setGenre] = useState<string>('');
-  
-  const [useCustomTheme, setUseCustomTheme] = useState<boolean>(false);
-  const [theme, setTheme] = useState<string>('');
-  
-  const [useCustomAuthor, setUseCustomAuthor] = useState<boolean>(false);
-  const [authorStyle, setAuthorStyle] = useState<string>('');
-
-  const [useCustomEnding, setUseCustomEnding] = useState<boolean>(false);
-  const [endingStyle, setEndingStyle] = useState<string>('');
-
-  const [useCustomPOV, setUseCustomPOV] = useState<boolean>(false);
-  const [pointOfView, setPointOfView] = useState<string>('');
-
-  // Generation State
-  const [novelMarkdown, setNovelMarkdown] = useState<string>('');
-  const [loadingState, setLoadingState] = useState<LoadingState>(LoadingState.IDLE);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  // Template Logic
-  const applyTemplate = useCallback((template: NovelTemplate) => {
-    const { config } = template;
-
-    setContent(config.content || '');
-
-    // Helper to toggle custom flags based on value presence
-    const applyField = (
-      val: string | null | undefined, 
-      setVal: (v: string) => void, 
-      setToggle: (v: boolean) => void
-    ) => {
-      if (val) {
-        setVal(val);
-        setToggle(true);
-      } else {
-        setVal('');
-        setToggle(false);
-      }
-    };
-
-    applyField(config.format, setFormat, setUseCustomFormat);
-    applyField(config.genre, setGenre, setUseCustomGenre);
-    applyField(config.theme, setTheme, setUseCustomTheme);
-    applyField(config.authorStyle, setAuthorStyle, setUseCustomAuthor);
-    applyField(config.endingStyle, setEndingStyle, setUseCustomEnding);
-    applyField(config.pointOfView, setPointOfView, setUseCustomPOV);
-
-    if (config.length) {
-      setLength(config.length);
-      setUseCustomLength(true);
-    } else {
-      setLength('Medium');
-      setUseCustomLength(false);
-    }
-    
-    // Reset generation state
-    setNovelMarkdown('');
-    setLoadingState(LoadingState.IDLE);
+  const updateConfig = useCallback((field: keyof ConfigState, value: string) => {
+    dispatch({ type: 'SET_FIELD', field, value });
   }, []);
 
-  const generate = useCallback(async () => {
-    setLoadingState(LoadingState.GENERATING);
-    setErrorMessage(null);
-    setNovelMarkdown('');
+  const toggleConfig = useCallback((field: keyof TogglesState) => {
+    dispatch({ type: 'TOGGLE_FIELD', field });
+  }, []);
+  
+  const setToggle = useCallback((field: keyof TogglesState, value: boolean) => {
+    dispatch({ type: 'SET_TOGGLE', field, value });
+  }, []);
 
-    const config: NovelConfiguration = {
-      content,
-      format: useCustomFormat && format.trim() ? format : null,
-      length: useCustomLength ? length : null,
-      genre: useCustomGenre && genre.trim() ? genre : null,
-      theme: useCustomTheme && theme.trim() ? theme : null,
-      authorStyle: useCustomAuthor && authorStyle.trim() ? authorStyle : null,
-      endingStyle: useCustomEnding && endingStyle.trim() ? endingStyle : null,
-      pointOfView: useCustomPOV && pointOfView.trim() ? pointOfView : null,
-    };
+  const applyStoryTemplate = useCallback((template: StoryTemplate) => {
+    dispatch({ type: 'APPLY_STORY_TEMPLATE', template });
+  }, []);
 
-    try {
-      const stream = generateNovelStream(config);
-      
-      for await (const chunk of stream) {
-        setNovelMarkdown((prev) => prev + chunk);
-      }
-      
-      setLoadingState(LoadingState.COMPLETE);
-    } catch (err: any) {
-      setLoadingState(LoadingState.ERROR);
-      setErrorMessage(err.message || '연금술 과정에서 알 수 없는 오류가 발생했습니다.');
-    }
-  }, [
-    content, useCustomFormat, format, useCustomLength, length, 
-    useCustomGenre, genre, useCustomTheme, theme, 
-    useCustomAuthor, authorStyle, useCustomEnding, endingStyle, 
-    useCustomPOV, pointOfView
-  ]);
+  const applyAuthorTemplate = useCallback((template: AuthorTemplate) => {
+    dispatch({ type: 'APPLY_AUTHOR_TEMPLATE', template });
+  }, []);
 
   const reset = useCallback(() => {
-    setLoadingState(LoadingState.IDLE);
-    setNovelMarkdown('');
-    setErrorMessage(null);
+    dispatch({ type: 'RESET' });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
+  const generate = useCallback(async () => {
+    dispatch({ type: 'START_GENERATION' });
+    
+    const { config, toggles } = state;
+
+    // Helper to conditionally get value
+    const val = (toggle: boolean, value: string) => (toggle && value.trim() ? value : null);
+
+    const apiConfig: NovelConfiguration = {
+      content: config.content,
+      format: val(toggles.useCustomFormat, config.format),
+      length: toggles.useCustomLength ? config.length : null,
+      genre: val(toggles.useCustomGenre, config.genre),
+      theme: val(toggles.useCustomTheme, config.theme),
+      authorStyle: val(toggles.useCustomAuthor, config.authorStyle),
+      endingStyle: val(toggles.useCustomEnding, config.endingStyle),
+      pointOfView: val(toggles.useCustomPOV, config.pointOfView),
+      emotionalTone: val(toggles.useCustomTone, config.emotionalTone),
+      narrativePace: val(toggles.useCustomPace, config.narrativePace),
+      narrativeMode: val(toggles.useCustomMode, config.narrativeMode),
+      authorPersonality: val(toggles.useCustomPersonality, config.authorPersonality),
+      authorTone: val(toggles.useCustomSpeech, config.authorTone),
+      customStoryConfig: val(toggles.useCustomStoryConfig, config.customStoryConfig),
+      customAuthorConfig: val(toggles.useCustomAuthorConfig, config.customAuthorConfig),
+    };
+
+    try {
+      const stream = generateNovelStream(apiConfig);
+      for await (const chunk of stream) {
+        dispatch({ type: 'APPEND_GENERATION', chunk });
+      }
+      dispatch({ type: 'COMPLETE_GENERATION' });
+    } catch (err: any) {
+      dispatch({ type: 'ERROR_GENERATION', message: err.message || '작업 중 알 수 없는 오류가 발생했습니다.' });
+    }
+  }, [state]);
+
   return {
-    // Config State
-    content, setContent,
-    useCustomFormat, setUseCustomFormat, format, setFormat,
-    useCustomLength, setUseCustomLength, length, setLength,
-    useCustomGenre, setUseCustomGenre, genre, setGenre,
-    useCustomTheme, setUseCustomTheme, theme, setTheme,
-    useCustomAuthor, setUseCustomAuthor, authorStyle, setAuthorStyle,
-    useCustomEnding, setUseCustomEnding, endingStyle, setEndingStyle,
-    useCustomPOV, setUseCustomPOV, pointOfView, setPointOfView,
-    
-    // Result State
-    novelMarkdown,
-    loadingState,
-    errorMessage,
-    
-    // Actions
-    generate,
-    reset,
-    applyTemplate
+    state,
+    actions: {
+      updateConfig,
+      toggleConfig,
+      setToggle,
+      applyStoryTemplate,
+      applyAuthorTemplate,
+      reset,
+      generate
+    }
   };
 };

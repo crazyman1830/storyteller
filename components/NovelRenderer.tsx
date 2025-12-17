@@ -2,13 +2,21 @@ import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { NovelContent } from '../types';
 import { generateExportHTML } from '../services/htmlGenerator';
 import { generateFeedbackResponseStream } from '../services/geminiService';
+import { parseNovelMarkdown } from '../utils/novelParser';
 
 interface NovelRendererProps {
   rawMarkdown: string;
   isStreaming?: boolean;
+  authorPersonality?: string | null;
+  authorTone?: string | null;
 }
 
-const NovelRenderer: React.FC<NovelRendererProps> = ({ rawMarkdown, isStreaming = false }) => {
+const NovelRenderer: React.FC<NovelRendererProps> = ({ 
+  rawMarkdown, 
+  isStreaming = false,
+  authorPersonality = null,
+  authorTone = null
+}) => {
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
   
   // Feedback State
@@ -18,48 +26,9 @@ const NovelRenderer: React.FC<NovelRendererProps> = ({ rawMarkdown, isStreaming 
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   const responseRef = useRef<HTMLDivElement>(null);
 
+  // Use the utility function for parsing
   const content: NovelContent | null = useMemo(() => {
-    if (!rawMarkdown) return null;
-
-    // 1. Extract Title (Matches # Title)
-    const titleMatch = rawMarkdown.match(/^#\s+(.+)$/m);
-    const title = titleMatch ? titleMatch[1].trim() : '제목 없음...';
-
-    // 2. Extract Body
-    // Looks for "## Story" or "## 이야기" (case insensitive) and captures everything until "---" or "## Author's Note"
-    const bodyMatch = rawMarkdown.match(/(?:##\s*(?:Story|이야기))([\s\S]*?)(?:---|##\s*(?:Author's Note|작가의 말)|$)/i);
-    const bodyRaw = bodyMatch ? bodyMatch[1].trim() : '';
-    
-    // If we are streaming and haven't found the body tag yet, use the whole text (fallback)
-    // or if the text hasn't formatted properly yet.
-    const displayBody = (!bodyRaw && isStreaming) ? rawMarkdown.replace(/^#\s+.+$/m, '') : bodyRaw;
-
-    // 3. Extract Meta (Genre & Intent)
-    // Looks for the section after "## Author's Note" or "## 작가의 말"
-    const metaMatch = rawMarkdown.match(/(?:##\s*(?:Author's Note|작가의 말))([\s\S]*?)$/i);
-    const metaRaw = metaMatch ? metaMatch[1] : '';
-
-    let genre = '...';
-    let intent = '...';
-
-    if (metaRaw) {
-      // Regex to find "Genre:" or "장르:" followed by content
-      const genreExtractor = metaRaw.match(/(?:-|\*)\s*\*\*(?:Genre|장르):\*\*\s*(.*)/i);
-      // Regex to find "Intent:" or "의도:" followed by content
-      const intentExtractor = metaRaw.match(/(?:-|\*)\s*\*\*(?:Intent|의도):\*\*\s*(.*)/i);
-
-      if (genreExtractor) genre = genreExtractor[1].trim();
-      if (intentExtractor) intent = intentExtractor[1].trim();
-    }
-
-    return {
-      title,
-      body: displayBody,
-      meta: {
-        genre,
-        intent
-      }
-    };
+    return parseNovelMarkdown(rawMarkdown, isStreaming);
   }, [rawMarkdown, isStreaming]);
 
   const handleCopyHtml = async () => {
@@ -95,7 +64,12 @@ const NovelRenderer: React.FC<NovelRendererProps> = ({ rawMarkdown, isStreaming 
     setAuthorResponse('');
     
     try {
-      const stream = generateFeedbackResponseStream(content.title, feedbackInput);
+      const stream = generateFeedbackResponseStream(
+        content.title, 
+        feedbackInput,
+        authorPersonality,
+        authorTone
+      );
       for await (const chunk of stream) {
         setAuthorResponse(prev => prev + chunk);
       }
@@ -103,11 +77,10 @@ const NovelRenderer: React.FC<NovelRendererProps> = ({ rawMarkdown, isStreaming 
       setAuthorResponse("감사의 인사를 전하려 했으나, 마음이 닿지 않았나 봅니다.");
     } finally {
       setIsSendingFeedback(false);
-      setFeedbackInput(''); // Clear input after sending
+      setFeedbackInput(''); 
     }
   };
   
-  // Scroll to response when it starts coming in
   useEffect(() => {
     if (authorResponse && responseRef.current) {
         responseRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -119,7 +92,7 @@ const NovelRenderer: React.FC<NovelRendererProps> = ({ rawMarkdown, isStreaming 
   return (
     <div className="w-full max-w-3xl mx-auto animate-slide-up pb-20">
         
-        {/* Metadata Badges - Only show if we have data */}
+        {/* Metadata Badges */}
         {(content?.meta.genre !== '...' || !isStreaming) && (
             <div className="flex justify-center mb-8 animate-fade-in">
                 <span className="px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20 uppercase tracking-wider font-sans">
@@ -144,10 +117,8 @@ const NovelRenderer: React.FC<NovelRendererProps> = ({ rawMarkdown, isStreaming 
                     if (!cleanPara) return null;
                     if (cleanPara === '---') return <div key={index} className="flex justify-center my-12 opacity-30"><span className="text-2xl tracking-[1em]">***</span></div>;
                     
-                    // Remove headings from body if they slipped in
                     if (cleanPara.startsWith('#')) return null;
 
-                    // Basic bold parsing
                     const parts = cleanPara.split(/(\*\*.*?\*\*)/g);
                     return (
                         <p key={index} className="">
@@ -160,14 +131,13 @@ const NovelRenderer: React.FC<NovelRendererProps> = ({ rawMarkdown, isStreaming 
                         </p>
                     );
                 })}
-                {/* Blinking Cursor for Streaming */}
                 {isStreaming && (
                     <span className="inline-block w-2 h-5 ml-1 align-middle bg-primary animate-pulse shadow-[0_0_8px_rgba(251,191,36,0.8)]"></span>
                 )}
             </article>
         </div>
 
-        {/* Footer / Author's Note */}
+        {/* Footer */}
         {(content?.meta.intent !== '...' || !isStreaming) && (
           <>
              <footer className="mt-20 pt-10 border-t border-white/5 animate-fade-in">
@@ -179,7 +149,6 @@ const NovelRenderer: React.FC<NovelRendererProps> = ({ rawMarkdown, isStreaming 
                 </div>
             </footer>
 
-            {/* Export Actions */}
             <div className="mt-8 flex flex-col md:flex-row items-center justify-center gap-4 animate-fade-in">
               <button 
                 onClick={handleCopyHtml}

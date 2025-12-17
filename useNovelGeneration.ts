@@ -46,6 +46,13 @@ export const useNovelGeneration = () => {
       authorStyle: useCustomAuthor && authorStyle.trim() ? authorStyle : null,
       endingStyle: useCustomEnding && endingStyle.trim() ? endingStyle : null,
       pointOfView: useCustomPOV && pointOfView.trim() ? pointOfView : null,
+      emotionalTone: null,
+      narrativePace: null,
+      narrativeMode: null,
+      authorPersonality: null,
+      authorTone: null,
+      customStoryConfig: null,
+      customAuthorConfig: null
     };
 
     try {
