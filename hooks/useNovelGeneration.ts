@@ -57,7 +57,7 @@ interface GenerationState {
 
 // --- Initial State Defaults ---
 
-const initialConfig: ConfigState = {
+const getInitialConfig = (): ConfigState => ({
   content: '',
   format: '',
   length: 'Medium',
@@ -73,9 +73,9 @@ const initialConfig: ConfigState = {
   authorTone: '',
   customStoryConfig: '',
   customAuthorConfig: '',
-};
+});
 
-const initialToggles: TogglesState = {
+const getInitialToggles = (): TogglesState => ({
   useCustomFormat: false,
   useCustomLength: false,
   useCustomGenre: false,
@@ -90,11 +90,11 @@ const initialToggles: TogglesState = {
   useCustomSpeech: false,
   useCustomStoryConfig: false,
   useCustomAuthorConfig: false,
-};
+});
 
-const defaultState: GenerationState = {
-  config: initialConfig,
-  toggles: initialToggles,
+const getDefaultState = (): GenerationState => ({
+  config: getInitialConfig(),
+  toggles: getInitialToggles(),
   selection: {
     storyTemplateId: '',
     authorTemplateId: '',
@@ -104,7 +104,7 @@ const defaultState: GenerationState = {
     loadingState: LoadingState.IDLE,
     errorMessage: null,
   },
-};
+});
 
 // --- LocalStorage Helper ---
 const loadStateFromStorage = (): GenerationState => {
@@ -121,7 +121,7 @@ const loadStateFromStorage = (): GenerationState => {
   } catch (e) {
     console.warn('Failed to load state from storage', e);
   }
-  return defaultState;
+  return getDefaultState();
 };
 
 // --- Reducer ---
@@ -251,7 +251,8 @@ function reducer(state: GenerationState, action: Action): GenerationState {
         },
       };
     case 'RESET':
-      return defaultState; // Reset to absolute defaults, clearing storage implicitly via effect
+      // Return a fresh default state to ensure everything is cleared
+      return getDefaultState();
     default:
       return state;
   }
@@ -289,10 +290,9 @@ export const useNovelGeneration = () => {
   }, []);
 
   const reset = useCallback(() => {
-    if (window.confirm("작성 중인 내용과 결과가 모두 초기화됩니다. 계속하시겠습니까?")) {
-        dispatch({ type: 'RESET' });
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    // Removed window.confirm for better UX and reliability
+    dispatch({ type: 'RESET' });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
   const generate = useCallback(async () => {

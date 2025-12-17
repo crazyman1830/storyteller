@@ -372,10 +372,10 @@ const App: React.FC = () => {
               
               {/* Footer Actions (Only show when complete) */}
               {isComplete && (
-                <div className="fixed bottom-8 left-0 right-0 flex justify-center pointer-events-none z-20 animate-slide-up">
+                <div className="fixed bottom-8 left-0 right-0 flex justify-center pointer-events-none z-50 animate-slide-up">
                    <button
                       onClick={actions.reset}
-                      className="pointer-events-auto px-6 py-3 bg-surface/90 backdrop-blur-md text-gray-300 hover:text-white border border-white/10 hover:border-white/30 rounded-full shadow-lg transition-all hover:-translate-y-1 font-medium text-sm flex items-center gap-2 group"
+                      className="pointer-events-auto px-6 py-3 bg-surface/90 backdrop-blur-md text-gray-300 hover:text-white border border-white/10 hover:border-white/30 rounded-full shadow-lg transition-all hover:-translate-y-1 font-medium text-sm flex items-center gap-2 group cursor-pointer"
                    >
                      <svg className="w-4 h-4 text-gray-500 group-hover:text-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                      새로운 이야기 만들기
