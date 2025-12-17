@@ -13,8 +13,8 @@ const LoadingIndicator: React.FC = () => {
       </div>
       
       <div className="text-center space-y-1">
-        <h3 className="text-lg font-medium text-gray-200 tracking-wide">문장을 빚어내는 중</h3>
-        <p className="text-sm text-gray-500">당신의 상상이 현실이 되는 시간입니다.</p>
+        <h3 className="text-lg font-medium text-gray-200 tracking-wide">AI가 원고를 집필하고 있습니다</h3>
+        <p className="text-sm text-gray-500">잠시만 기다려주세요...</p>
       </div>
     </div>
   );

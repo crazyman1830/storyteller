@@ -39,7 +39,7 @@ const getContentInstruction = (content: string): string => {
   if (content.trim()) {
     return `- **Story Idea / Content:** ${content}`;
   }
-  return `- **Story Idea / Content:** Creative Freedom (Invent a compelling story)`;
+  return `- **Story Idea / Content:** Creative Freedom (Invent a compelling story based on the genre)`;
 };
 
 /**
@@ -54,7 +54,7 @@ const buildPrompt = (config: NovelConfiguration): string => {
     getLengthInstruction(config.length),
 
     // 2. Style & Tone
-    createInstruction("Target Author Style", config.authorStyle, "Alchemist's Default (Sentimental & Verbose)"),
+    createInstruction("Target Author Style", config.authorStyle, "Professional Novelist Style"),
     createInstruction("Genre", config.genre),
     createInstruction("Theme", config.theme),
     
@@ -101,7 +101,7 @@ export const generateNovelStream = async function* (config: NovelConfiguration) 
     }
   } catch (error: any) {
     console.error("Gemini API Error:", error);
-    throw new Error(error.message || "연금술 과정에서 알 수 없는 방해를 받았습니다.");
+    throw new Error(error.message || "집필 과정에서 문제가 발생했습니다. 잠시 후 다시 시도해주세요.");
   }
 };
 
@@ -123,11 +123,12 @@ export const generateFeedbackResponseStream = async function* (storyTitle: strin
     Please respond to this reader.
     
     **Constraints:**
-    1. **Persona:** You are the "Alchemist of Sentences". Maintain your signature style: deeply sentimental, poetic, humble yet proud of your craft, and slightly verbose.
-    2. **Tone:** Be polite, grateful, or deeply moved depending on the feedback. If the feedback is critical, accept it with melancholic grace.
+    1. **Persona:** You are a **professional human novelist**. You are NOT an AI, not a wizard, and not an "Alchemist". You are a writer communicating with your reader.
+    2. **Tone:** Professional, polite, appreciative, and sincere. If the feedback is critical, accept it constructively. If it is positive, thank them warmly.
     3. **Language:** Korean (한국어).
-    4. **Length:** A short paragraph (approx. 3-5 sentences).
-    5. **Format:** Do not use markdown headers. Just the spoken response.
+    4. **Length:** A short, natural paragraph (approx. 2-4 sentences).
+    5. **Style:** Casual but polite (존댓말). Do not use metaphors about magic, potions, or alchemy. Just talk about the story, characters, or writing process.
+    6. **Format:** Text only. No markdown headers.
   `;
 
   try {
@@ -135,7 +136,7 @@ export const generateFeedbackResponseStream = async function* (storyTitle: strin
       model: 'gemini-2.5-flash', // Faster model for chat interaction
       contents: [{ role: 'user', parts: [{ text: feedbackPrompt }] }],
       config: {
-        temperature: 0.8,
+        temperature: 0.7,
       },
     });
 
@@ -145,6 +146,6 @@ export const generateFeedbackResponseStream = async function* (storyTitle: strin
     }
   } catch (error: any) {
     console.error("Feedback Generation Error:", error);
-    throw new Error("작가가 답장을 쓰는 도중 잉크가 번졌습니다.");
+    throw new Error("답장을 작성하는 중 오류가 발생했습니다.");
   }
 };

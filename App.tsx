@@ -74,7 +74,7 @@ const SettingInput: React.FC<{
     </div>
     {!isActive && (
        <div className="h-[42px] w-full flex items-center px-1 text-sm text-gray-600 italic select-none">
-         <span className="text-xs border border-white/5 bg-white/[0.02] px-2 py-1 rounded text-gray-500">AI 자동 결정</span>
+         <span className="text-xs border border-white/5 bg-white/[0.02] px-2 py-1 rounded text-gray-500">AI 작가가 결정합니다</span>
        </div>
     )}
   </div>
@@ -147,10 +147,10 @@ const App: React.FC = () => {
               </div>
             </div>
             <h1 className="text-3xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-br from-white via-white to-gray-500 tracking-tight text-center mb-4">
-              문장의 연금술사
+              AI 스토리 스튜디오
             </h1>
             <p className="text-gray-400 text-sm md:text-base font-medium tracking-wide text-center max-w-lg mx-auto leading-relaxed">
-              원하는 재료를 선택하고, 연금술의 결과를 확인하세요.
+              당신의 아이디어에 전문적인 문장력을 더해<br className="hidden md:block" />완성도 높은 이야기를 집필해드립니다.
             </p>
           </header>
         )}
@@ -179,13 +179,13 @@ const App: React.FC = () => {
                       {/* Main Content Input */}
                       <div className="space-y-3">
                         <label className="block text-primary text-xs font-bold tracking-widest uppercase ml-1">
-                          이야기 내용 / 줄거리
+                          이야기 소재 / 핵심 내용
                         </label>
                         <textarea
                           ref={textareaRef}
                           value={content}
                           onChange={(e) => setContent(e.target.value)}
-                          placeholder="어떤 이야기를 만들고 싶으신가요? 키워드, 줄거리, 혹은 막연한 느낌을 적어주세요."
+                          placeholder="어떤 이야기를 쓰고 싶으신가요? 핵심 소재, 줄거리, 혹은 떠오르는 장면을 자유롭게 적어주세요."
                           className="w-full bg-transparent text-lg text-white placeholder-gray-600 border-none focus:ring-0 resize-none outline-none leading-relaxed min-h-[120px]"
                           rows={3}
                         />
@@ -202,82 +202,110 @@ const App: React.FC = () => {
                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
                            </svg>
-                           세부 설정 (형식, 분량, 스타일 등)
+                           세부 설정 (장르, 문체, 분량 등)
                          </span>
                          <div className={`p-1 rounded-full bg-white/5 transition-transform duration-300 ${showAdvanced ? 'rotate-180 bg-primary/20 text-primary' : ''}`}>
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7 7" />
                             </svg>
                          </div>
                       </button>
 
-                      {/* Collapsible Advanced Settings (Enhanced Visibility) */}
-                      <div className={`overflow-hidden transition-all duration-500 ease-in-out ${showAdvanced ? 'max-h-[1400px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                      {/* Collapsible Advanced Settings (Reorganized) */}
+                      <div className={`overflow-hidden transition-all duration-500 ease-in-out ${showAdvanced ? 'max-h-[1600px] opacity-100' : 'max-h-0 opacity-0'}`}>
                           
-                          <div className="pt-4 pb-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="pt-6 pb-2 space-y-8">
                              
-                             {/* Group: Format & Length */}
-                             <SettingInput 
-                                label="글의 형식" 
-                                isActive={useCustomFormat} 
-                                onToggle={setUseCustomFormat} 
-                                value={format} 
-                                onChange={setFormat} 
-                                placeholder="예: 소설, 수필" 
-                             />
+                             {/* Section 1: Story Specs */}
+                             <div>
+                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                                  작품 설정 (Story Specs)
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <SettingInput 
+                                      label="장르" 
+                                      isActive={useCustomGenre} 
+                                      onToggle={setUseCustomGenre} 
+                                      value={genre} 
+                                      onChange={setGenre} 
+                                      placeholder="예: 스릴러, 로맨스, 판타지" 
+                                  />
 
-                             <div className={`p-4 rounded-xl border transition-all duration-300 ${useCustomLength ? 'bg-white/5 border-primary/30' : 'bg-white/[0.02] border-white/5 hover:bg-white/5'}`}>
-                                <div className="flex justify-between items-center h-8 mb-2">
-                                  <label className={`text-sm font-semibold transition-colors ${useCustomLength ? 'text-white' : 'text-gray-400'}`}>글의 분량</label>
-                                  <ToggleSwitch checked={useCustomLength} onChange={setUseCustomLength} label={useCustomLength ? "선택" : "자동"} />
+                                  <SettingInput 
+                                      label="글의 형식" 
+                                      isActive={useCustomFormat} 
+                                      onToggle={setUseCustomFormat} 
+                                      value={format} 
+                                      onChange={setFormat} 
+                                      placeholder="예: 단편소설, 시나리오, 에세이" 
+                                  />
+
+                                  <div className={`p-4 rounded-xl border transition-all duration-300 ${useCustomLength ? 'bg-white/5 border-primary/30' : 'bg-white/[0.02] border-white/5 hover:bg-white/5'}`}>
+                                      <div className="flex justify-between items-center h-8 mb-2">
+                                        <label className={`text-sm font-semibold transition-colors ${useCustomLength ? 'text-white' : 'text-gray-400'}`}>글의 분량</label>
+                                        <ToggleSwitch checked={useCustomLength} onChange={setUseCustomLength} label={useCustomLength ? "선택" : "자동"} />
+                                      </div>
+                                      <div className={`overflow-hidden transition-all duration-300 ease-in-out ${useCustomLength ? 'max-h-12 opacity-100' : 'max-h-0 opacity-0'}`}>
+                                          <LengthSelector value={length} onChange={setLength} />
+                                      </div>
+                                      {!useCustomLength && (
+                                        <div className="h-[42px] w-full flex items-center px-1 text-sm text-gray-600 italic select-none">
+                                          <span className="text-xs border border-white/5 bg-white/[0.02] px-2 py-1 rounded text-gray-500">AI 작가가 결정합니다</span>
+                                        </div>
+                                      )}
+                                  </div>
+
+                                  <SettingInput 
+                                      label="결말 방향" 
+                                      isActive={useCustomEnding} 
+                                      onToggle={setUseCustomEnding} 
+                                      value={endingStyle} 
+                                      onChange={setEndingStyle} 
+                                      placeholder="예: 반전 결말, 해피엔딩, 열린 결말" 
+                                  />
                                 </div>
-                                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${useCustomLength ? 'max-h-12 opacity-100' : 'max-h-0 opacity-0'}`}>
-                                    <LengthSelector value={length} onChange={setLength} />
-                                </div>
-                                {!useCustomLength && (
-                                   <div className="h-[42px] w-full flex items-center px-1 text-sm text-gray-600 italic select-none">
-                                     <span className="text-xs border border-white/5 bg-white/[0.02] px-2 py-1 rounded text-gray-500">AI 자동 결정</span>
-                                   </div>
-                                )}
                              </div>
 
-                             {/* Group: Style & Tone */}
-                             <SettingInput 
-                                label="작가 스타일" 
-                                isActive={useCustomAuthor} 
-                                onToggle={setUseCustomAuthor} 
-                                value={authorStyle} 
-                                onChange={setAuthorStyle} 
-                                placeholder="예: 헤밍웨이" 
-                             />
-                             
-                             <SettingInput 
-                                label="장르" 
-                                isActive={useCustomGenre} 
-                                onToggle={setUseCustomGenre} 
-                                value={genre} 
-                                onChange={setGenre} 
-                                placeholder="예: 로맨스, 판타지" 
-                             />
+                             {/* Divider */}
+                             <div className="border-t border-white/5"></div>
 
-                             {/* Group: Narrative */}
-                             <SettingInput 
-                                label="시점 (POV)" 
-                                isActive={useCustomPOV} 
-                                onToggle={setUseCustomPOV} 
-                                value={pointOfView} 
-                                onChange={setPointOfView} 
-                                placeholder="예: 1인칭, 3인칭 전지적" 
-                             />
-                             
-                             <SettingInput 
-                                label="결말 스타일" 
-                                isActive={useCustomEnding} 
-                                onToggle={setUseCustomEnding} 
-                                value={endingStyle} 
-                                onChange={setEndingStyle} 
-                                placeholder="예: 열린 결말, 해피엔딩" 
-                             />
+                             {/* Section 2: Author Persona */}
+                             <div>
+                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                  작가 페르소나 (Author Persona)
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <SettingInput 
+                                      label="문체 스타일" 
+                                      isActive={useCustomAuthor} 
+                                      onToggle={setUseCustomAuthor} 
+                                      value={authorStyle} 
+                                      onChange={setAuthorStyle} 
+                                      placeholder="예: 건조한, 감성적인, 유머러스한" 
+                                  />
+                                  
+                                  <SettingInput 
+                                      label="시점 (POV)" 
+                                      isActive={useCustomPOV} 
+                                      onToggle={setUseCustomPOV} 
+                                      value={pointOfView} 
+                                      onChange={setPointOfView} 
+                                      placeholder="예: 1인칭 주인공, 3인칭 전지적" 
+                                  />
+
+                                  <SettingInput 
+                                      label="주제/메시지" 
+                                      isActive={useCustomTheme} 
+                                      onToggle={setUseCustomTheme} 
+                                      value={theme} 
+                                      onChange={setTheme} 
+                                      placeholder="예: 성장, 복수, 사랑의 영원함" 
+                                  />
+                                </div>
+                             </div>
+
                           </div>
                       </div>
                     </div>
@@ -289,8 +317,8 @@ const App: React.FC = () => {
                         className="relative px-8 py-3 bg-white text-black font-semibold rounded-full overflow-hidden transition-all hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_30px_rgba(255,255,255,0.4)]"
                       >
                         <span className="relative z-10 flex items-center gap-2 text-sm tracking-wide">
-                          연성하기
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                          집필 시작하기
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                         </span>
                       </button>
                     </div>
@@ -328,7 +356,7 @@ const App: React.FC = () => {
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
                       </span>
-                      <span className="text-xs font-bold text-primary tracking-widest uppercase">집필 중...</span>
+                      <span className="text-xs font-bold text-primary tracking-widest uppercase">AI 집필 중...</span>
                    </div>
                  ) : (
                    <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
@@ -346,8 +374,8 @@ const App: React.FC = () => {
                       onClick={reset}
                       className="pointer-events-auto px-6 py-3 bg-surface/90 backdrop-blur-md text-gray-300 hover:text-white border border-white/10 hover:border-white/30 rounded-full shadow-lg transition-all hover:-translate-y-1 font-medium text-sm flex items-center gap-2 group"
                    >
-                     <svg className="w-4 h-4 text-gray-500 group-hover:text-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                     새로운 영감 찾기
+                     <svg className="w-4 h-4 text-gray-500 group-hover:text-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                     새로운 이야기 만들기
                    </button>
                 </div>
               )}
