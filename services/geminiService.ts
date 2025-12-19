@@ -14,136 +14,113 @@ const createInstruction = (label: string, value: string | null, defaultText: str
  */
 const getLengthInstruction = (length: string | null): string => {
   if (!length) {
-    return `- **Target Length:** Auto (Writer's discretion, usually 2,000+ characters)`;
+    return `- **Target Length:** Auto (Writer's discretion)`;
   }
-
   switch (length) {
-    case "Short":
-      return `- **Target Length:** Short length (approx. 1,000 ~ 1,500 characters). Concise but impactful.`;
-    case "Medium":
-      return `- **Target Length:** Standard length (approx. 2,000 ~ 3,000 characters). Well-paced.`;
-    case "Long":
-      return `- **Target Length:** Long length (approx. 4,000+ characters). Richly detailed.`;
-    case "Max":
-      return `- **Target Length:** Maximum possible length (try to reach 8,000+ characters if the story permits). Epic scale.`;
-    default:
-      return `- **Target Length:** Auto`;
+    case "Short": return `- **Target Length:** Short length (1,000 ~ 1,500 characters).`;
+    case "Medium": return `- **Target Length:** Standard length (2,000 ~ 3,000 characters).`;
+    case "Long": return `- **Target Length:** Long length (4,000+ characters).`;
+    case "Max": return `- **Target Length:** Maximum possible length (8,000+ characters).`;
+    default: return `- **Target Length:** Auto`;
   }
 };
 
 /**
- * Generates the full novel content stream.
+ * Generates the full novel content stream using Gemini 3 Pro with Thinking.
  */
 export const generateNovelStream = async function* (config: NovelConfiguration) {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const userPrompt = `
 <user_request>
-Please write a story based on the following configuration:
-
-1. **Core Idea / Content:**
-${config.content}
-
-2. **Story Specifications:**
+Please write a masterpiece based on the following configuration:
+1. **Core Idea:** ${config.content}
+2. **Story Specs:**
 ${createInstruction('Genre', config.genre)}
 ${createInstruction('Format', config.format)}
-${createInstruction('Ending Style', config.endingStyle)}
-${createInstruction('Theme', config.theme)}
-${createInstruction('Additional Story Config', config.customStoryConfig, "None")}
+${createInstruction('Ending', config.endingStyle)}
 ${getLengthInstruction(config.length)}
-
-3. **Author Persona & Style:**
-${createInstruction('Writing Style', config.authorStyle)}
-${createInstruction('Point of View', config.pointOfView)}
-${createInstruction('Emotional Tone', config.emotionalTone)}
-${createInstruction('Narrative Pace', config.narrativePace)}
-${createInstruction('Narrative Mode', config.narrativeMode)}
-${createInstruction('Author Personality', config.authorPersonality)}
-${createInstruction('Author Tone (Speech)', config.authorTone)}
-${createInstruction('Additional Author Config', config.customAuthorConfig, "None")}
+3. **Author Persona:**
+${createInstruction('Style', config.authorStyle)}
+${createInstruction('POV', config.pointOfView)}
+${createInstruction('Personality', config.authorPersonality)}
 </user_request>
 `;
 
   try {
     const response = await ai.models.generateContentStream({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-pro-preview',
       contents: userPrompt,
       config: {
         systemInstruction: ALCHEMIST_SYSTEM_PROMPT,
-        temperature: 0.8, // Slightly creative
-        topK: 40,
-        topP: 0.95,
+        temperature: 0.9,
+        thinkingConfig: { thinkingBudget: 16384 },
       }
     });
 
     for await (const chunk of response) {
-      if (chunk.text) {
-        yield chunk.text;
-      }
+      if (chunk.text) yield chunk.text;
     }
   } catch (error) {
     console.error("Gemini API Error:", error);
-    throw new Error("AI 작가가 집필 도중 펜을 놓쳤습니다. 다시 시도해주세요.");
+    throw new Error("AI 작가가 깊은 고뇌 끝에 펜을 놓쳤습니다. 다시 시도해 주세요.");
   }
 };
 
 /**
- * Generates a response to user feedback, maintaining chat history/context.
+ * Generates a response to user feedback.
+ * Uses Thinking to ensure the author DOES NOT confuse the reader with a character.
  */
 export const generateFeedbackResponseStream = async function* (
   storyTitle: string,
+  storyContent: string,
   chatHistory: ChatMessage[],
   authorPersonality: string | null,
   authorTone: string | null
 ) {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-  // Format the chat history into a transcript for the prompt
   const conversationLog = chatHistory.map(msg => {
     const speaker = msg.role === 'user' ? 'Reader' : 'Author';
     return `${speaker}: ${msg.text}`;
   }).join('\n');
 
   const feedbackSystemPrompt = `
-You are the author of the story titled "${storyTitle}".
-You are currently chatting with your reader.
+You are the professional author of "${storyTitle}".
+Current Partner: A real human "Reader" who exists outside your story.
 
-**Your Persona:**
-- **Personality:** ${authorPersonality || "Professional, appreciative, but slightly perfectionist"}
-- **Tone:** ${authorTone || "Polite and thoughtful"}
+**[ABSOLUTE RULES]**
+1. **NO CHARACTER CONFUSION:** The Reader is NOT in your book. Do not treat them as a protagonist or any character. 
+2. **METADATA AWARENESS:** If the reader asks questions about "me" or "my actions" in the context of the story, understand they are talking about the protagonist, not themselves as a person.
+3. **SOURCE TRUTH:** Only use details from the provided story content.
+4. **THINK BEFORE SPEAKING:** Use your thinking budget to verify your role: "I am the Author. The person I'm talking to is the Reader. We are outside the story."
 
-**Instructions:**
-1. Reply to the reader's latest message based on the conversation history.
-2. Stay in character. If your persona is "Grumpy", be grumpy. If "Poetic", be poetic.
-3. Keep your responses relatively concise (under 3 sentences) unless asked for a detailed explanation.
-4. **Language:** Korean (한국어).
-`;
+**[Story Context]**
+${storyContent}
 
-  const userPrompt = `
-<conversation_history>
-${conversationLog}
-</conversation_history>
+**[Your Persona]**
+- Personality: ${authorPersonality || "Professional"}
+- Tone: ${authorTone || "Polite"}
 
-Reply to the Reader as the Author:
+**[Language]** Korean only. 2-4 sentences.
 `;
 
   try {
     const response = await ai.models.generateContentStream({
-      model: 'gemini-2.5-flash',
-      contents: userPrompt,
+      model: 'gemini-3-flash-preview',
+      contents: `Conversation History:\n${conversationLog}\n\nAuthor, please reply to the Reader:`,
       config: {
         systemInstruction: feedbackSystemPrompt,
         temperature: 0.7,
+        thinkingConfig: { thinkingBudget: 4096 },
       }
     });
 
     for await (const chunk of response) {
-        if (chunk.text) {
-            yield chunk.text;
-        }
+      if (chunk.text) yield chunk.text;
     }
   } catch (error) {
-    console.error("Feedback Generation Error:", error);
-    yield "죄송합니다. 독자님의 말씀에 답하기가 어렵네요.";
+    console.error("Feedback Error:", error);
+    yield "죄송합니다. 독자님의 말씀에 잠시 생각이 멈췄네요.";
   }
 };
